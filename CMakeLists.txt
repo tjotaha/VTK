@@ -269,6 +269,9 @@ VTK_DEPENDENT_OPTION(VTK_USE_CG_SHADERS "Build pixel and vertex shader support f
 VTK_DEPENDENT_OPTION(VTK_USE_GLSL_SHADERS "Build pixel and vertex shader support for GLSL." ON
   "VTK_USE_RENDERING" OFF)
 
+VTK_DEPENDENT_OPTION(VTK_USE_CHARTS "Build VTK chart support (OpenGL based)" ON
+  "VTK_USE_RENDERING;VTK_USE_VIEWS" OFF)
+
 SET(VTK_DEFAULT_SHADERS_DIR
    "${VTK_BINARY_DIR}/Utilities/MaterialLibrary/Repository"
    CACHE INTERNAL 
@@ -294,19 +297,15 @@ MARK_AS_ADVANCED(VTK_NO_PYTHON_THREADS)
 OPTION(VTK_USE_QT "Build Qt support" OFF)
 
 IF(VTK_USE_QT)
-# we need Qt3 or Qt4
-# we ask up front so FindQt.cmake doesn't auto-find an undesired Qt version
-  SET(DESIRED_QT_VERSION 0 CACHE STRING "Pick a version of Qt to use: 3 or 4")
-  
-  IF(DESIRED_QT_VERSION MATCHES 0)
-    MESSAGE("Please set the DESIRED_QT_VERSION")
-  ELSE(DESIRED_QT_VERSION MATCHES 0)
-    SET ( QT_USE_QTSQL 1 )
-    INCLUDE( ${CMAKE_ROOT}/Modules/FindQt${DESIRED_QT_VERSION}.cmake )
-    IF(NOT QT_FOUND)
-      MESSAGE("Qt was not found")
-    ENDIF(NOT QT_FOUND)
-  ENDIF(DESIRED_QT_VERSION MATCHES 0)
+# Now require Qt 4.5.0 or later
+  SET(QT_MIN_VERSION "4.5.0")
+  SET(QT_OFFICIAL_VERSION "4.5")
+  SET(QT_REQUIRED TRUE)
+  SET(QT_USE_QTSQL 1)
+  FIND_PACKAGE(Qt4)
+  IF(NOT QT4_FOUND)
+    MESSAGE(SEND_ERROR "Qt ${QT_MIN_VERSION} or greater not found.  Please check the QT_QMAKE_EXECUTABLE variable.")
+  ENDIF(NOT QT4_FOUND)
 ENDIF(VTK_USE_QT)
   
 # Determine GUI Support.
@@ -372,6 +371,9 @@ IF(VTK_USE_MFC)
   SET(VTK_KITS ${VTK_KITS} MFC)
 ENDIF(VTK_USE_MFC)
 
+IF(VTK_USE_CHARTS)
+  SET(VTK_KITS ${VTK_KITS} CHARTS)
+ENDIF(VTK_USE_CHARTS)
 
 #-----------------------------------------------------------------------------
 # Determine GUI.
@@ -1156,6 +1158,9 @@ ENDIF(VTK_USE_VIEWS)
 IF(VTK_USE_GUISUPPORT)
   ADD_SUBDIRECTORY(GUISupport)
 ENDIF(VTK_USE_GUISUPPORT)
+IF(VTK_USE_CHARTS)
+  ADD_SUBDIRECTORY(Charts)
+ENDIF(VTK_USE_CHARTS)
 
 # Wrapping.
 IF(VTK_WRAP_TCL)

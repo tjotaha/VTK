@@ -61,7 +61,7 @@ class vtkImageData;
 #endif
 
 
-#if defined(QVTK_USE_CARBON) && QT_VERSION >= 0x040000
+#if defined(QVTK_USE_CARBON)
 #include <Carbon/Carbon.h>    // Event handling for dirty region
 #endif
 
@@ -80,18 +80,13 @@ class QVTK_EXPORT QVTKWidget : public QWidget
   Q_PROPERTY(bool automaticImageCacheEnabled
              READ isAutomaticImageCacheEnabled
              WRITE setAutomaticImageCacheEnabled)
-    Q_PROPERTY(double maxRenderRateForImageCache
-               READ maxRenderRateForImageCache
-               WRITE setMaxRenderRateForImageCache)
+  Q_PROPERTY(double maxRenderRateForImageCache
+             READ maxRenderRateForImageCache
+             WRITE setMaxRenderRateForImageCache)
 
-    public:
-#if QT_VERSION < 0x040000
-  //! constructor for Qt 3
-  QVTKWidget(QWidget* parent = NULL, const char* name = NULL, Qt::WFlags f = 0);
-#else
-  //! constructor for Qt 4
+public:
+  //! constructor
   QVTKWidget(QWidget* parent = NULL, Qt::WFlags f = 0);
-#endif
   //! destructor
   virtual ~QVTKWidget();
 
@@ -141,12 +136,6 @@ class QVTK_EXPORT QVTKWidget : public QWidget
   // to date, that is returned to avoid grabbing other windows.
   virtual vtkImageData* cachedImage();
     
-#if QT_VERSION < 0x040000
-  // Description:
-  // Handle reparenting of this widget in Qt 3.x
-  virtual void reparent(QWidget* parent, Qt::WFlags f, const QPoint& p, bool showit);
-#endif
-    
   // Description:
   // Handle showing of the Widget
   virtual void showEvent(QShowEvent*);
@@ -164,7 +153,7 @@ class QVTK_EXPORT QVTKWidget : public QWidget
   bool GetUseTDx() const;
   
 
-  @Q_SIGNALS@:
+Q_SIGNALS:
   // Description:
   // This signal will be emitted whenever a mouse event occurs
   // within the QVTK window
@@ -179,7 +168,7 @@ class QVTK_EXPORT QVTKWidget : public QWidget
   // This signal will be emitted whenever the cached image is refreshed.
   void cachedImageClean();
 
-public @Q_SLOTS@:
+public Q_SLOTS:
   // Description:
   // This will mark the cached image as dirty.  This slot is automatically
   // invoked whenever the render window has a render event or the widget is
@@ -248,20 +237,11 @@ protected:
   // that VTK chooses
   void x11_setup_window();
 
-#if defined(QVTK_USE_CARBON) && QT_VERSION < 0x040000
-  void macFixRect();
-  virtual void setRegionDirty(bool);
-  virtual void macWidgetChangedWindow();
-#endif    
-
-#if defined(QVTK_USE_CARBON) && QT_VERSION >= 0x040000
+#if defined(QVTK_USE_CARBON)
   EventHandlerUPP DirtyRegionHandlerUPP;
   EventHandlerRef DirtyRegionHandler;
   static OSStatus DirtyRegionProcessor(EventHandlerCallRef er, EventRef event, void*);
 #endif
-
-private @Q_SLOTS@:
-void internalMacFixRect();
 
 protected:
     
@@ -310,7 +290,7 @@ public:
   // Stop listening events on 3DConnexion device.
   virtual void StopListening();
 
-public @Q_SLOTS@:
+public Q_SLOTS:
 // timer event slot
 virtual void TimerEvent(int timerId);
 
