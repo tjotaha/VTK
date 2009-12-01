@@ -34,6 +34,7 @@
 #include "vtkImageActor.h"
 #include "vtkRenderer.h"
 #include "vtkCamera.h"
+#include "vtkAbstractCellLocator.h"
 
 vtkCxxRevisionMacro(vtkSurfacePicker, "$Revision$");
 vtkStandardNewMacro(vtkSurfacePicker);
@@ -41,13 +42,16 @@ vtkStandardNewMacro(vtkSurfacePicker);
 //----------------------------------------------------------------------------
 vtkSurfacePicker::vtkSurfacePicker()
 {
+  this->Locators = vtkCollection::New();
+
   this->Cell = vtkGenericCell::New();
   this->Gradients = vtkDoubleArray::New();
   this->Gradients->SetNumberOfComponents(3);
   this->Gradients->SetNumberOfTuples(8);
  
   this->Tolerance = 1e-6;
-  this->VolumeOpacityIsovalue = 0.01;
+  this->VolumeOpacityIsovalue = 0.05;
+  this->IgnoreGradientOpacity = 1;
   this->PickClippingPlanes = 0;
 
   this->ClippingPlaneId = -1;
@@ -82,6 +86,7 @@ vtkSurfacePicker::~vtkSurfacePicker()
 {
   this->Gradients->Delete();
   this->Cell->Delete();
+  this->Locators->Delete();
 }
 
 //----------------------------------------------------------------------------
@@ -91,6 +96,8 @@ void vtkSurfacePicker::PrintSelf(ostream& os, vtkIndent indent)
 
   os << indent << "VolumeOpacityIsovalue: " << this->VolumeOpacityIsovalue
      << "\n";
+  os << indent << "IgnoreGradientOpacity: "
+     << (this->IgnoreGradientOpacity ? "On" : "Off") << "\n";
 
   os << indent << "MapperNormal: (" <<  this->MapperNormal[0] << ","
      << this->MapperNormal[1] << "," << this->MapperNormal[2] << ")\n";
@@ -144,6 +151,27 @@ void vtkSurfacePicker::Initialize()
   this->PickNormal[2] = 1.0;
 
   this->Superclass::Initialize();
+}
+
+//----------------------------------------------------------------------------
+void vtkSurfacePicker::AddLocator(vtkAbstractCellLocator *locator)
+{
+  if (!this->Locators->IsItemPresent(locator))
+    {
+    this->Locators->AddItem(locator);
+    }
+}
+
+//----------------------------------------------------------------------------
+void vtkSurfacePicker::RemoveLocator(vtkAbstractCellLocator *locator)
+{
+  this->Locators->RemoveItem(locator);
+}
+
+//----------------------------------------------------------------------------
+void vtkSurfacePicker::RemoveAllLocators()
+{
+  this->Locators->RemoveAllItems();
 }
 
 //----------------------------------------------------------------------------
@@ -326,38 +354,63 @@ double vtkSurfacePicker::IntersectActorWithLine(const double p1[3],
   double minXYZ[3];
   minXYZ[0] = minXYZ[1] = minXYZ[2] = 0.0;
 
-  vtkIdType numCells = data->GetNumberOfCells();
-  for (vtkIdType cellId = 0; cellId < numCells; cellId++) 
+  vtkCollectionSimpleIterator iter;
+  vtkAbstractCellLocator *locator = 0;
+  this->Locators->InitTraversal(iter);
+  while ( (locator = static_cast<vtkAbstractCellLocator *>(
+           this->Locators->GetNextItemAsObject(iter))) )
     {
-    double t;
-    double x[3];
-    double pcoords[3];
-    pcoords[0] = pcoords[1] = pcoords[2] = 0;
-    int subId = -1;
-
-    data->GetCell(cellId, this->Cell);
-    if (this->Cell->IntersectWithLine(const_cast<double *>(p1),
-                                      const_cast<double *>(p2),
-                                      tol, t, x, pcoords, subId) 
-        && t <= (tMin + this->Tolerance) && t >= t1 && t <= t2)
+    if (locator->GetDataSet() == data)
       {
-      double pDist = this->Cell->GetParametricDistance(pcoords);
-      if (pDist < pDistMin || (pDist == pDistMin && t < tMin))
+      break;
+      }
+    }
+
+  if (locator)
+    {
+    if (!locator->IntersectWithLine(const_cast<double *>(p1),
+                                    const_cast<double *>(p2),
+                                    tol, tMin, minXYZ,
+                                    minPCoords, minSubId, minCellId))
+      {
+      return VTK_DOUBLE_MAX;
+      }
+    }
+  else
+    {
+    vtkIdType numCells = data->GetNumberOfCells();
+    for (vtkIdType cellId = 0; cellId < numCells; cellId++) 
+      {
+      double t;
+      double x[3];
+      double pcoords[3];
+      pcoords[0] = pcoords[1] = pcoords[2] = 0;
+      int subId = -1;
+
+      data->GetCell(cellId, this->Cell);
+      if (this->Cell->IntersectWithLine(const_cast<double *>(p1),
+                                        const_cast<double *>(p2),
+                                        tol, t, x, pcoords, subId) 
+          && t <= (tMin + this->Tolerance) && t >= t1 && t <= t2)
         {
-        tMin = t;
-        pDistMin = pDist;
-        // save all of these
-        minCellId = cellId;
-        minSubId = subId;
-        minXYZ[0] = x[0];
-        minXYZ[1] = x[1];
-        minXYZ[2] = x[2];
-        minPCoords[0] = pcoords[0];
-        minPCoords[1] = pcoords[1];
-        minPCoords[2] = pcoords[2];
-        } // if minimum, maximum
-      } // if a close cell
-    } // for all cells
+        double pDist = this->Cell->GetParametricDistance(pcoords);
+        if (pDist < pDistMin || (pDist == pDistMin && t < tMin))
+          {
+          tMin = t;
+          pDistMin = pDist;
+          // save all of these
+          minCellId = cellId;
+          minSubId = subId;
+          minXYZ[0] = x[0];
+          minXYZ[1] = x[1];
+          minXYZ[2] = x[2];
+          minPCoords[0] = pcoords[0];
+          minPCoords[1] = pcoords[1];
+          minPCoords[2] = pcoords[2];
+          } // if minimum, maximum
+        } // if a close cell
+      } // for all cells
+    }
   
   // Do this if a cell was intersected
   if (minCellId >= 0 && tMin < this->GlobalTMin)
@@ -490,7 +543,7 @@ double vtkSurfacePicker::IntersectVolumeWithLine(const double p1[3],
     int disableGradientOpacity = 
       property->GetDisableGradientOpacity(component);
     vtkPiecewiseFunction *gradientOpacity = 0;
-    if (!disableGradientOpacity)
+    if (!disableGradientOpacity && !this->IgnoreGradientOpacity)
       {
       gradientOpacity = property->GetGradientOpacity(component);
       }
@@ -550,10 +603,12 @@ double vtkSurfacePicker::IntersectVolumeWithLine(const double p1[3],
         {
         if (fabs((x2[k] - x1[k])/rayLength) > 1e-6)
           {
-          // Set inc to +1 or -1
-          int inc = (1 - 2*(x2[k] < x1[k]));
-          double ttry = (xi[k] + inc - x1[k])/(x2[k] - x1[k]);
-          if (ttry < t)
+          double lastX = x1[k]*(1.0 - lastT) + x2[k]*lastT;
+          // Increment to next slice boundary along dimension "k"
+          double nextX = ((x2[k] > x1[k]) ? floor(lastX)+1 : ceil(lastX)-1);
+          // Compute the "t" value for this slice boundary
+          double ttry = lastT + (nextX - lastX)/(x2[k] - x1[k]);
+          if (ttry > lastT && ttry < t)
             {
             t = ttry;
             }
@@ -974,9 +1029,12 @@ double vtkSurfacePicker::ComputeVolumeOpacity(
   int scalarType = data->GetScalarType();
 
   // Compute the increments for the three directions, checking the bounds
-  vtkIdType xInc = (xi[0] < extent[1] ? 1 : 0);
-  vtkIdType yInc = (xi[1] < extent[3] ? (extent[1] - extent[0] + 1) : 0);
-  vtkIdType zInc = (xi[2] < extent[5] ? (extent[3] - extent[2] + 1) : 0);
+  vtkIdType xInc = 1;
+  vtkIdType yInc = extent[1] - extent[0] + 1;
+  vtkIdType zInc = yInc*(extent[3] - extent[2] + 1);
+  if (xi[0] == extent[1]) { xInc = 0; }
+  if (xi[1] == extent[3]) { yInc = 0; }
+  if (xi[2] == extent[5]) { zInc = 0; }
 
   // Use the increments and weights to interpolate the data
   vtkIdType ptId = data->ComputePointId(const_cast<int *>(xi));

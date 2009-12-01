@@ -398,6 +398,11 @@ IF(VTK_USE_CARBON AND VTK_USE_COCOA)
 ENDIF(VTK_USE_CARBON AND VTK_USE_COCOA)
 
 #-----------------------------------------------------------------------------
+# Determine whether to use the experimental Ogg/Theora writer.
+OPTION(VTK_USE_OGGTHEORA_ENCODER "Build experimental Ogg/Theora support" OFF)
+MARK_AS_ADVANCED(VTK_USE_OGGTHEORA_ENCODER)
+
+#-----------------------------------------------------------------------------
 # VTK requires special compiler flags on some platforms.
 INCLUDE(${VTK_CMAKE_DIR}/vtkDetermineCompilerFlags.cmake)
 
@@ -505,18 +510,37 @@ ENDIF(BUILD_TESTING)
 OPTION(VTK_USE_DISPLAY "Turn this option off and tests and warning/error macros will not popup windows" ON)
 MARK_AS_ADVANCED(VTK_USE_DISPLAY)
 
-#-----------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+# Options for C++ test driver
+
+# locale
+OPTION(VTK_TESTING_USE_LOCALE "VTK c++ tests will start with specified locale." OFF)
+MARK_AS_ADVANCED(VTK_TESTING_USE_LOCALE)
+SET(VTK_TESTING_LOCALE "" CACHE STRING "Locale for VTK C++ tests. Example fr_FR.utf8, empty string for env variable.")
+MARK_AS_ADVANCED(VTK_TESTING_LOCALE)
+
 # Leave this option ON by default. It helps to catch floating point math
 # exceptions early on nightly dashboard runs.
 #
 OPTION(VTK_TESTING_USE_FPE "VTK tests call vtkFloatingPointExceptions::Enable()" ON)
 MARK_AS_ADVANCED(VTK_TESTING_USE_FPE)
 
+
+SET(CMAKE_TESTDRIVER_BEFORE_TESTMAIN)
+
+IF(VTK_TESTING_USE_LOCALE)
+ SET(CMAKE_TESTDRIVER_BEFORE_TESTMAIN "${CMAKE_TESTDRIVER_BEFORE_TESTMAIN}
+    setlocale(LC_ALL,\"${VTK_TESTING_LOCALE}\");
+    std::locale::global(std::locale(\"${VTK_TESTING_LOCALE}\"));")
+ENDIF(VTK_TESTING_USE_LOCALE)
+
 IF(VTK_TESTING_USE_FPE)
- SET(CMAKE_TESTDRIVER_BEFORE_TESTMAIN "vtkFloatingPointExceptions::Enable();\n    try {")
-ELSE(VTK_TESTING_USE_FPE)
- SET(CMAKE_TESTDRIVER_BEFORE_TESTMAIN "    try {")
+ SET(CMAKE_TESTDRIVER_BEFORE_TESTMAIN "${CMAKE_TESTDRIVER_BEFORE_TESTMAIN}
+    vtkFloatingPointExceptions::Enable();\n")
 ENDIF(VTK_TESTING_USE_FPE)
+
+SET(CMAKE_TESTDRIVER_BEFORE_TESTMAIN "${CMAKE_TESTDRIVER_BEFORE_TESTMAIN}
+    try {")
 
 SET(CMAKE_TESTDRIVER_AFTER_TESTMAIN "    }
     catch(vtkstd::exception& e)
@@ -661,6 +685,9 @@ VTK_THIRD_PARTY_OPTION(EXPAT expat)
 VTK_THIRD_PARTY_OPTION(FREETYPE freetype)
 VTK_THIRD_PARTY_OPTION(LIBXML2 libxml2)
 VTK_THIRD_PARTY_OPTION(LIBPROJ4 proj4)
+if(VTK_USE_OGGTHEORA_ENCODER)
+  VTK_THIRD_PARTY_OPTION(OGGTHEORA oggtheora)
+endif(VTK_USE_OGGTHEORA_ENCODER)
 
 #-----------------------------------------------------------------------------
 # Configure OpenGL support.

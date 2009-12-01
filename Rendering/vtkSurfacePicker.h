@@ -50,6 +50,8 @@ class vtkDoubleArray;
 class vtkCell;
 class vtkGenericCell;
 class vtkImageData;
+class vtkAbstractCellLocator;
+class vtkCollection;
 
 class VTK_RENDERING_EXPORT vtkSurfacePicker : public vtkPicker
 {
@@ -67,11 +69,37 @@ public:
                    vtkRenderer *renderer);  
 
   // Description:
+  // Add a locator for one of the data sets that will be included in the
+  // scene.  This can dramatically increase performance for complex
+  // objects.  If you try to add the same locator twice, the second addition
+  // will be ignored.  You must either build the locator before doing the
+  // pick, or turn on LazyEvaluation in the locator.
+  void AddLocator(vtkAbstractCellLocator *locator);
+
+  // Description:
+  // Remove a locator that was previously added.  If you try to remove a
+  // nonexistent locator, then nothing will happen and no errors will be
+  // raised.
+  void RemoveLocator(vtkAbstractCellLocator *locator);
+
+  // Description:
+  // Remove all locators associated with this picker.
+  void RemoveAllLocators();
+
+  // Description:
   // Set the opacity isovalue to use for defining volume surfaces.  The
   // pick will occur at the location along the pick ray where the product
   // of the scalar opacity and gradient opacity is equal to this isovalue.
   vtkSetMacro(VolumeOpacityIsovalue, double);
   vtkGetMacro(VolumeOpacityIsovalue, double);
+
+  // Description:
+  // Ignore the gradient opacity function when computing the opacity
+  // isovalue.  This parameter is only relevant to volume picking and
+  // is on by default.
+  vtkSetMacro(IgnoreGradientOpacity, int);
+  vtkBooleanMacro(IgnoreGradientOpacity, int);
+  vtkGetMacro(IgnoreGradientOpacity, int);
 
   // Description:
   // Set whether to pick the clipping planes of props that have them.
@@ -179,7 +207,10 @@ protected:
                               vtkPiecewiseFunction *scalarOpacity,
                               vtkPiecewiseFunction *gradientOpacity);
 
+  vtkCollection *Locators;
+
   double VolumeOpacityIsovalue;
+  int IgnoreGradientOpacity;
   int PickClippingPlanes;
   int ClippingPlaneId;
 
