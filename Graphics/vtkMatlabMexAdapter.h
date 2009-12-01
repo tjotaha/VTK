@@ -45,8 +45,6 @@
 
 #include "mex.h"
 #include "matrix.h"
-#include "vtkInfovisMatlabEngineWin32Header.h"
-
 #include "vtkObject.h"
 
 class vtkInformation;
@@ -56,7 +54,7 @@ class vtkArray;
 class vtkGraph;
 class vtkTable;
 
-class VTKSNL_INFOVIS_MATLAB_ENGINE_EXPORT vtkMatlabMexAdapter : public vtkObject
+class VTK_GRAPHICS_EXPORT vtkMatlabMexAdapter : public vtkObject
 {
 
 public:

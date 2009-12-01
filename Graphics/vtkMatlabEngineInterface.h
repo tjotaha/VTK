@@ -43,14 +43,13 @@
 #ifndef __vtkMatlabEngineInterface_h
 #define __vtkMatlabEngineInterface_h
 
-#include "vtkInfovisMatlabEngineWin32Header.h"
 #include "vtkObject.h"
 
 class vtkArray;
 class vtkDataArray;
 class MatlabEngineSingleton;
 
-class VTKSNL_INFOVIS_MATLAB_ENGINE_EXPORT vtkMatlabEngineInterface : public vtkObject
+class VTK_GRAPHICS_EXPORT vtkMatlabEngineInterface : public vtkObject
 {
 
 public:

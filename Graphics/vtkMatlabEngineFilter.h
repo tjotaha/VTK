@@ -35,7 +35,6 @@
 #ifndef __vtkMatlabEngineFilter_h
 #define __vtkMatlabEngineFilter_h
 
-#include "vtkInfovisMatlabEngineWin32Header.h"
 #include "vtkDataObjectAlgorithm.h"
 
 class vtkMatlabEngineInterface;
@@ -43,7 +42,7 @@ class vtkMatlabEngineFilterInternals;
 class vtkDataSet;
 class vtkDoubleArray;
 
-class VTKSNL_INFOVIS_MATLAB_ENGINE_EXPORT vtkMatlabEngineFilter : public vtkDataObjectAlgorithm
+class VTK_GRAPHICS_EXPORT vtkMatlabEngineFilter : public vtkDataObjectAlgorithm
 {
 
 public:

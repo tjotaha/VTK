@@ -27,6 +27,26 @@ IF (VTK_USE_RENDERING AND VTK_USE_DISPLAY)
     TestTessellator.cxx
     TestUncertaintyTubeFilter.cxx
     )
+
+  # Add Matlab Engine and Matlab Mex related tests.
+  IF(VTK_USE_MATLAB_MEX)
+    INCLUDE(${MATLAB_MEX_USE_FILE})
+    SET(MyTests ${MyTests}
+      TestMatlabEngineInterface.cxx
+      TestMatlabEngineFilter.cxx
+    )
+  ENDIF(VTK_USE_MATLAB_MEX)
+
+  # Add Gnu R interface related files.
+  IF(VTK_USE_GNU_R)
+    INCLUDE(${R_USE_FILE})
+    SET(MyTests ${MyTests}
+      TestRRandomTableSource.cxx
+      TestRCalculatorFilter.cxx
+      TestRInterface.cxx
+      )
+  ENDIF(VTK_USE_GNU_R)
+
   IF (VTK_DATA_ROOT)
     # add tests that require data
     SET(MyTests ${MyTests}

@@ -140,7 +140,7 @@ template<typename T> mxArray* CopyVTKArrayTomxArray(vtkTypedArray<T>* da, mxClas
 
 };
 
-template<typename T> vtkArray* CopymxArrayToVTKArray(mxArray* mxa, int ValueType, bool ShallowCopy)
+template<typename T> vtkArray* CopymxArrayToVTKArray(mxArray* mxa, int ValueType, bool vtkNotUsed(ShallowCopy))
 {
 
   vtkTypedArray<T>* da;
@@ -315,7 +315,7 @@ double mxArrayGetValue(int i, int j, mxArray* mxa)
       {
       for(row_index = row_start_index; row_index < row_stop_index ;row_index++)
         {
-        if(i == ir[row_index])
+        if(i == (int) ir[row_index])
           return(pr[row_index]);
         }
 
@@ -636,7 +636,7 @@ vtkArray* vtkMatlabMexAdapter::mxArrayTovtkArray(mxArray* mxa, bool ShallowCopy)
 
 // Create a mxArray from a vtkGraph (Allocates memory)
 
-mxArray* vtkMatlabMexAdapter::vtkGraphToMxArray(vtkGraph* ga, bool ShallowCopy)
+mxArray* vtkMatlabMexAdapter::vtkGraphToMxArray(vtkGraph* ga, bool vtkNotUsed(ShallowCopy))
 {
 
   mxArray* output;
@@ -745,7 +745,7 @@ mxArray* vtkMatlabMexAdapter::vtkGraphToMxArray(vtkGraph* ga, bool ShallowCopy)
 
 // Create a vtkGraph from an mxArray (Allocates memory)
 
-vtkGraph* vtkMatlabMexAdapter::mxArrayTovtkGraph(mxArray* mxa, bool ShallowCopy)
+vtkGraph* vtkMatlabMexAdapter::mxArrayTovtkGraph(mxArray* mxa, bool vtkNotUsed(ShallowCopy))
 {
 
   int nr;
