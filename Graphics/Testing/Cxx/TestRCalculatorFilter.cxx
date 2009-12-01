@@ -1,0 +1,131 @@
+/*=========================================================================
+
+  Program:   Visualization Toolkit
+  Module:    $RCSfile: ArrayAPIConvenience.cxx,v $
+  
+-------------------------------------------------------------------------
+  Copyright 2008 Sandia Corporation.
+  Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+  the U.S. Government retains certain rights in this software.
+-------------------------------------------------------------------------
+
+  Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
+  All rights reserved.
+  See Copyright.txt or http://www.kitware.com/Copyright.htm for details.
+
+     This software is distributed WITHOUT ANY WARRANTY; without even
+     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+     PURPOSE.  See the above copyright notice for more information.
+
+=========================================================================*/
+
+#include <vtkRCalculatorFilter.h>
+#include <vtkSmartPointer.h>
+#include <vtkCylinderSource.h>
+#include <vtkDataSet.h>
+#include <vtkPointData.h>
+#include <vtkDoubleArray.h>
+#include <vtkArrayExtents.h>
+#include <vtkRRandomTableSource.h>
+#include <vtkTable.h>
+
+
+#include <vtksys/ios/iostream>
+#include <vtksys/ios/sstream>
+#include <vtksys/stl/stdexcept>
+
+namespace
+{
+
+#define test_expression(expression) \
+{ \
+  if(!(expression)) \
+    { \
+    vtksys_ios::ostringstream buffer; \
+    buffer << "Expression failed at line " << __LINE__ << ": " << #expression; \
+    throw vtkstd::runtime_error(buffer.str()); \
+    } \
+}
+
+bool doubleEquals(double left, double right, double epsilon) {
+  return (fabs(left - right) < epsilon);
+}
+
+}
+
+int TestRCalculatorFilter(int vtkNotUsed(argc), char *vtkNotUsed(argv)[])
+{
+  try
+    {
+    int i;
+    vtkCylinderSource* cs = vtkCylinderSource::New();
+    vtkRCalculatorFilter* rf = vtkRCalculatorFilter::New();
+    vtkRRandomTableSource* rts = vtkRRandomTableSource::New();
+    vtkRCalculatorFilter* rf2 = vtkRCalculatorFilter::New();
+    vtkDataSet* ds;
+    vtkPointData* pd;
+    vtkDoubleArray* da;
+    vtkDoubleArray* rda;
+
+    cs->SetResolution(10);
+    rf->SetInputConnection(cs->GetOutputPort());
+    rf->SetRoutput(0);
+    rf->PutArray("Normals", "Norm");
+    rf->PutArray("TCoords", "TCoords");
+    rf->GetArray("Normalsnew", "Norm");
+    rf->GetArray("TCoordsnew", "TCoords");
+    rf->SetRscript("Norm = Norm^2\nTCoords = TCoords + TCoords\n");
+    rf->Update();
+
+    ds = vtkDataSet::SafeDownCast(rf->GetOutput());
+    pd = ds->GetPointData();
+    da = (vtkDoubleArray*) pd->GetArray("Normals");
+    rda = (vtkDoubleArray*) pd->GetArray("Normalsnew");
+
+    for(i=0;i<da->GetNumberOfTuples();i++)
+      {
+      double* itup = da->GetTuple3(i);
+      double* rtup = rda->GetTuple3(i);
+      test_expression(doubleEquals(rtup[0],pow(itup[0],2),0.0001));
+      test_expression(doubleEquals(rtup[1],pow(itup[1],2),0.0001));
+      test_expression(doubleEquals(rtup[2],pow(itup[2],2),0.0001));
+      }
+
+    da = (vtkDoubleArray*) pd->GetArray("TCoords");
+    rda = (vtkDoubleArray*) pd->GetArray("TCoordsnew");
+
+    for(i=0;i<da->GetNumberOfTuples();i++)
+      {
+      double* itup = da->GetTuple2(i);
+      double* rtup = rda->GetTuple2(i);
+      test_expression(doubleEquals(rtup[0],itup[0]+itup[0],0.0001));
+      test_expression(doubleEquals(rtup[1],itup[1]+itup[1],0.0001));
+      }
+
+    rts->SetNumberOfRows(20);
+    rts->SetStatisticalDistributionForColumn(vtkRRandomTableSource::NORMAL,0.0,1.0,0.0,"Variable One",0);
+    rts->SetStatisticalDistributionForColumn(vtkRRandomTableSource::NORMAL,0.0,1.0,0.0,"Variable Two",1);
+    rts->SetStatisticalDistributionForColumn(vtkRRandomTableSource::NORMAL,0.0,1.0,0.0,"Variable Three",2);
+    rts->SetStatisticalDistributionForColumn(vtkRRandomTableSource::NORMAL,0.0,1.0,0.0,"Variable Four",3);
+    rf2->SetInputConnection(rts->GetOutputPort());
+    rf2->SetRoutput(0);
+    rf2->PutTable("x");
+    rf2->GetTable("z");
+    rf2->SetRscript("x\nz = matrix(unlist(x), nrow=length(x[[1]]), ncol=length(x))\nz = z + 5.0");
+    rf2->Update();
+    vtkTable::SafeDownCast(rf2->GetOutput())->Dump();
+
+    cs->Delete();
+    rts->Delete();
+    rf->Delete();
+    rf2->Delete();
+
+    return 0;
+    }
+  catch(vtkstd::exception& e)
+    {
+    cerr << e.what() << endl;
+    return 1;
+    }
+}
+
