@@ -64,8 +64,8 @@ public:
   // Copies Matlab variable NameOfMatVar from the Matlab Engine to the vtkDataArray named
   // NameOfVTKArray.  Will replace existing vtkDataArray with the same name.
   //
-  // Note: for vtkArray use "0","1","2",... for NameOfVTKArray to specify the index of
-  // the vtkArray to place on the output data set.
+  // Note: for vtkArray use any string for NameOfVTKArray.  The array will be appended
+  // to the list of vtkArrays on the output.
   void GetArray(const char* NameOfVTKArray, const char* NameOfMatVar);
 
   // Description:

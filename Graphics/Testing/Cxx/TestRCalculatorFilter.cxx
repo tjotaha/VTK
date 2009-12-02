@@ -28,7 +28,8 @@
 #include <vtkArrayExtents.h>
 #include <vtkRRandomTableSource.h>
 #include <vtkTable.h>
-
+#include <vtkTableToSparseArray.h>
+#include <vtkDenseArray.h>
 
 #include <vtksys/ios/iostream>
 #include <vtksys/ios/sstream>
@@ -111,9 +112,40 @@ int TestRCalculatorFilter(int vtkNotUsed(argc), char *vtkNotUsed(argv)[])
     rf2->SetRoutput(0);
     rf2->PutTable("x");
     rf2->GetTable("z");
-    rf2->SetRscript("x\nz = matrix(unlist(x), nrow=length(x[[1]]), ncol=length(x))\nz = z + 5.0");
+    rf2->SetRscript("x\nz = matrix(unlist(x),nrow=length(x[[1]]),ncol=length(x))\n\
+                     z[,1] = sample(0:19)\n\
+                     z[,2] = sample(0:19)\n\
+                     z[,3] = sample(0:19)\n");
     rf2->Update();
-    vtkTable::SafeDownCast(rf2->GetOutput())->Dump();
+    vtkTable* table = vtkTable::SafeDownCast(rf2->GetOutput());
+
+    vtkSmartPointer<vtkTableToSparseArray> source = vtkSmartPointer<vtkTableToSparseArray>::New();
+    source->AddInputConnection(rf2->GetOutputPort());
+    source->AddCoordinateColumn("0");
+    source->AddCoordinateColumn("1");
+    source->AddCoordinateColumn("2");
+    source->SetValueColumn("3");
+    rf->SetInputConnection(source->GetOutputPort());
+    rf->RemoveAllPutVariables();
+    rf->RemoveAllGetVariables();
+    rf->PutArray("0","a");
+    rf->GetArray("1","a");
+    rf->SetRoutput(0);
+    rf->SetRscript("a[,,] = sqrt(a[,,] + 5.0)\n");
+    rf->Update();
+
+    vtkDenseArray<double>* const dense_array = vtkDenseArray<double>::SafeDownCast(vtkArrayData::SafeDownCast(rf->GetOutput())->GetArray(1));
+    test_expression(dense_array);
+
+    for(i=0;i<table->GetNumberOfColumns();i++)
+      {
+      int ind0 = table->GetValue(i,0).ToInt();
+      int ind1 = table->GetValue(i,1).ToInt();
+      int ind2 = table->GetValue(i,2).ToInt();
+      double table_val = rts->GetOutput()->GetValue(i,3).ToDouble();
+      double dense_val = dense_array->GetValue(vtkArrayCoordinates(ind0,ind1,ind2));
+      test_expression(doubleEquals(sqrt(table_val + 5.0),dense_val,0.0001));
+      }
 
     cs->Delete();
     rts->Delete();
