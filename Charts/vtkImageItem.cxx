@@ -85,8 +85,8 @@ bool vtkImageItem::Paint(vtkContext2D *painter)
                       100, 20);
     painter->GetTextProp()->SetColor(0.0, 0.0, 0.0);
     painter->GetTextProp()->SetFontSize(12);
-    painter->DrawText(this->Dimensions[0]+60, this->Dimensions[1]+60,
-                      this->Label);
+    painter->DrawString(this->Dimensions[0]+60, this->Dimensions[1]+60,
+                        this->Label);
     }
 
   float p[] = { 0.0, 0.0,
@@ -131,8 +131,8 @@ bool vtkImageItem::MouseEnterEvent(const vtkContextMouseEvent &)
 bool vtkImageItem::MouseMoveEvent(const vtkContextMouseEvent &mouse)
 {
   // Work out our deltas...
-  int deltaX = mouse.ScenePos[0] - mouse.LastScenePos[0];
-  int deltaY = mouse.ScenePos[1] - mouse.LastScenePos[1];
+  float deltaX = mouse.ScenePos[0] - mouse.LastScenePos[0];
+  float deltaY = mouse.ScenePos[1] - mouse.LastScenePos[1];
 
   if (mouse.Button == 0) // Left mouse button - translate
     {

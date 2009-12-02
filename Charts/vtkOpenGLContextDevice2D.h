@@ -35,7 +35,7 @@ class vtkOpenGLExtensionManager;
 class VTK_CHARTS_EXPORT vtkOpenGLContextDevice2D : public vtkContextDevice2D
 {
 public:
-  vtkTypeRevisionMacro(vtkOpenGLContextDevice2D, vtkObject);
+  vtkTypeRevisionMacro(vtkOpenGLContextDevice2D, vtkContextDevice2D);
   virtual void PrintSelf(ostream &os, vtkIndent indent);
 
   // Description:
@@ -57,28 +57,10 @@ public:
   virtual void DrawQuad(float *points, int n);
 
 //BTX
-#ifdef VTK_WORKAROUND_WINDOWS_MANGLE
-  // Avoid windows name mangling.
-# define DrawTextA DrawText
-# define DrawTextW DrawText
-#endif
   // Description:
   // Draw some text to the screen!
-  virtual void DrawText(float *point, vtkTextProperty *tprop,
-                        const vtkStdString &string);
-
-#ifdef VTK_WORKAROUND_WINDOWS_MANGLE
-# undef DrawTextA
-# undef DrawTextW
-  //BTX
-  // Define possible mangled names.
-  virtual void DrawTextA(float *point, vtkTextProperty *tprop,
-                         const vtkStdString &string);
-  virtual void DrawTextW(float *point, vtkTextProperty *tprop,
-                         const vtkStdString &string);
-  //ETX
-#endif
-
+  virtual void DrawString(float *point, vtkTextProperty *tprop,
+                          const vtkStdString &string);
 //ETX
 
   // Description:

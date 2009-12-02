@@ -18,8 +18,9 @@
 #include <vtksys/stl/vector>
 #include <vtksys/ios/sstream>
 
-vtkCxxRevisionMacro(vtkKMeansStatistics,"$Revision$");
 vtkStandardNewMacro(vtkKMeansStatistics);
+vtkCxxRevisionMacro(vtkKMeansStatistics,"$Revision$");
+vtkCxxSetObjectMacro(vtkKMeansStatistics,DistanceFunctor,vtkKMeansDistanceFunctor);
 
 // ----------------------------------------------------------------------
 vtkKMeansStatistics::vtkKMeansStatistics()
@@ -32,17 +33,14 @@ vtkKMeansStatistics::vtkKMeansStatistics()
   this->KValuesArrayName = 0;
   this->SetKValuesArrayName( "K" );
   this->MaxNumIterations = 50;
-  this->DistanceFunctor = 0;
+  this->DistanceFunctor = vtkKMeansDistanceFunctor::New();
 }
 
 // ----------------------------------------------------------------------
 vtkKMeansStatistics::~vtkKMeansStatistics()
 {
   this->SetKValuesArrayName( 0 );
-  if( this->DistanceFunctor ) 
-    {
-      delete this->DistanceFunctor;
-    }
+  this->SetDistanceFunctor( 0 );
 }
 
 // ----------------------------------------------------------------------
@@ -179,8 +177,8 @@ int vtkKMeansStatistics::InitializeDataAndClusterCenters(vtkTable* inParameters,
       {
       if(reqIt->find( inData->GetColumnName( j ) ) != reqIt->end() ) 
         {
-        vtkAbstractArray* curCoords = this->DistanceFunctor->GetNewVTKArray();
-        vtkAbstractArray* newCoords = this->DistanceFunctor->GetNewVTKArray();
+        vtkAbstractArray* curCoords = this->DistanceFunctor->CreateCoordinateArray();
+        vtkAbstractArray* newCoords = this->DistanceFunctor->CreateCoordinateArray();
         curCoords->SetName( inData->GetColumnName( j ) );
         newCoords->SetName( inData->GetColumnName( j ) );
         curClusterElements->AddColumn( curCoords );
@@ -272,10 +270,10 @@ void vtkKMeansStatistics::UpdateClusterCenters( vtkTable* newClusterElements,
           vtkWarningMacro("cluster center " << i-startRunID->GetValue(runID) 
                                             << " in run " << runID 
                                             << " is degenerate. Attempting to perturb");
-          this->DistanceFunctor->PerturbElement(newClusterElements, 
-                                                curClusterElements, 
-                                                i, 
-                                                startRunID->GetValue(runID), 
+          this->DistanceFunctor->PerturbElement(newClusterElements,
+                                                curClusterElements,
+                                                i,
+                                                startRunID->GetValue(runID),
                                                 endRunID->GetValue(runID),
                                                 0.8 ) ;
           }
@@ -308,7 +306,8 @@ void vtkKMeansStatistics::Learn( vtkTable* inData,
 
   if ( !this->DistanceFunctor )
     {
-    this->DistanceFunctor = vtkKMeansDefaultDistanceFunctor::New();
+    vtkErrorMacro( "Distance functor is NULL" );
+    return;
     }
 
   // Data initialization
@@ -393,7 +392,8 @@ void vtkKMeansStatistics::Learn( vtkTable* inData,
         }
       }
 
-    // find minimum distance between each data object and cluster center
+    // Find minimum distance between each observation and each cluster center,
+    // then assign the observation to the nearest cluster.
     vtkIdType localMemberID, offsetLocalMemberID;
     double minDistance, curDistance;
     for ( vtkIdType observation=0; observation < dataElements->GetNumberOfRows(); observation++ )
@@ -411,14 +411,14 @@ void vtkKMeansStatistics::Learn( vtkTable* inData,
           vtkIdType j = runStartIdx;
           localMemberID = 0;
           offsetLocalMemberID = runStartIdx;
-          (*this->DistanceFunctor)( minDistance, 
-                                    curClusterElements->GetRow( j ), 
-                                    dataElements->GetRow( observation ) );
+          (*this->DistanceFunctor)( minDistance,
+            curClusterElements->GetRow( j ),
+            dataElements->GetRow( observation ) );
           for( /* no init */; j < runEndIdx; j++ )
             {
-            (*this->DistanceFunctor)( curDistance, 
-                                      curClusterElements->GetRow( j ), 
-                                      dataElements->GetRow( observation ) );
+            (*this->DistanceFunctor)( curDistance,
+              curClusterElements->GetRow( j ),
+              dataElements->GetRow( observation ) );
             if( curDistance < minDistance )
               {
               minDistance = curDistance;
@@ -426,19 +426,23 @@ void vtkKMeansStatistics::Learn( vtkTable* inData,
               offsetLocalMemberID = j;
               }
             }
-            if ( clusterMemberID->GetValue( observation*numRuns+runID) != localMemberID )
-              {
-              numMembershipChanges->SetValue( runID, numMembershipChanges->GetValue( runID ) + 1 );
-              clusterMemberID->SetValue( observation*numRuns+runID, localMemberID );
-              }
-            // change this to online update
-            vtkIdType newCardinality = numDataElementsInCluster->GetValue( offsetLocalMemberID ) + 1;
-            numDataElementsInCluster->SetValue( offsetLocalMemberID, newCardinality );
-            this->DistanceFunctor->PairwiseUpdate( newClusterElements, offsetLocalMemberID,
-                                     dataElements->GetRow( observation ), 1, newCardinality );
-            error->SetValue( offsetLocalMemberID, error->GetValue( offsetLocalMemberID ) + minDistance );
+          // We've located the nearest cluster center. Has it changed since the last iteration?
+          if ( clusterMemberID->GetValue( observation*numRuns+runID) != localMemberID )
+            {
+            numMembershipChanges->SetValue( runID, numMembershipChanges->GetValue( runID ) + 1 );
+            clusterMemberID->SetValue( observation*numRuns+runID, localMemberID );
             }
-         }
+          // Give the distance functor a chance to modify any derived quantities used to
+          // change the cluster centers between iterations, now that we know which cluster
+          // center the observation is assigned to.
+          vtkIdType newCardinality = numDataElementsInCluster->GetValue( offsetLocalMemberID ) + 1;
+          numDataElementsInCluster->SetValue( offsetLocalMemberID, newCardinality );
+          this->DistanceFunctor->PairwiseUpdate( newClusterElements, offsetLocalMemberID,
+            dataElements->GetRow( observation ), 1, newCardinality );
+          // Update the error for this cluster center to account for this observation.
+          error->SetValue( offsetLocalMemberID, error->GetValue( offsetLocalMemberID ) + minDistance );
+          }
+        }
       }
     // update cluster centers
     this->UpdateClusterCenters( newClusterElements, curClusterElements, numMembershipChanges, 
@@ -720,9 +724,10 @@ void vtkKMeansStatistics::SelectAssessFunctor( vtkTable* inData,
   
   vtkKMeansAssessFunctor* kmfunc = vtkKMeansAssessFunctor::New();
 
-  if( !this->DistanceFunctor )
+  if ( ! this->DistanceFunctor )
     {
-      this->DistanceFunctor = vtkKMeansDefaultDistanceFunctor::New();
+    vtkErrorMacro( "Distance functor is NULL" );
+    return;
     }
 
   if ( ! kmfunc->Initialize( inData, reqModel, this->DistanceFunctor ) )
@@ -730,7 +735,6 @@ void vtkKMeansStatistics::SelectAssessFunctor( vtkTable* inData,
     delete kmfunc;
     }
   dfunc = kmfunc;
-
 }
 
 // ----------------------------------------------------------------------
