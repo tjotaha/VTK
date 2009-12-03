@@ -33,6 +33,8 @@
   vtkSmartPointer<type> name = vtkSmartPointer<type>::New()
 
 //----------------------------------------------------------------------------
+namespace {
+
 class APIDiagram : public vtkContextItem
 {
 public:
@@ -42,8 +44,10 @@ public:
   virtual bool Paint(vtkContext2D *painter);
 };
 
+} // End of anonymous namespace
+
 //----------------------------------------------------------------------------
-int TestDiagram( int argc, char * argv [] )
+int TestQtDiagram( int argc, char * argv [] )
 {
   // Set up a 2D chart actor, APIDiagram object andn add them to the renderer
   VTK_CREATE(vtkContextActor, actor);
@@ -73,6 +77,8 @@ int TestDiagram( int argc, char * argv [] )
   return !retVal;
 }
 
+namespace {
+
 // Make our new derived class to draw a diagram
 vtkStandardNewMacro(APIDiagram);
 vtkCxxRevisionMacro(APIDiagram, "$Revision$");
@@ -84,6 +90,7 @@ bool APIDiagram::Paint(vtkContext2D *painter)
   painter->GetTextProp()->SetJustificationToCentered();
   painter->GetTextProp()->SetColor(0.0, 0.0, 0.0);
   painter->GetTextProp()->SetFontSize(24);
+  painter->GetTextProp()->SetFontFamilyToArial();
   painter->GetPen()->SetColor(0, 0, 0);
 
   painter->GetBrush()->SetColor(100, 255, 100);
@@ -116,3 +123,6 @@ bool APIDiagram::Paint(vtkContext2D *painter)
 
   return true;
 }
+
+} // End of anonymous namespace
+

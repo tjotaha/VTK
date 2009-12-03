@@ -21,7 +21,6 @@
 #include "vtkPen.h"
 #include "vtkBrush.h"
 #include "vtkTextProperty.h"
-
 #include "vtkFloatArray.h"
 
 #include "vtkObjectFactory.h"
@@ -40,7 +39,17 @@ vtkStandardNewMacro(vtkContext2D);
 //-----------------------------------------------------------------------------
 bool vtkContext2D::Begin(vtkContextDevice2D *device)
 {
+  if (this->Device == device)
+    {
+    //Handle the case where the same device is set multiple times
+    return true;
+    }
+  else if (this->Device)
+    {
+    this->Device->Delete();
+    }
   this->Device = device;
+  this->Device->Register(this);
   this->Modified();
   return true;
 }
@@ -49,6 +58,7 @@ bool vtkContext2D::Begin(vtkContextDevice2D *device)
 bool vtkContext2D::End()
 {
   this->Device->End();
+  this->Device->Delete();
   this->Device = NULL;
   this->Modified();
   return true;
@@ -224,21 +234,20 @@ void vtkContext2D::DrawRect(float x1, float y1, float x2, float y2)
   float p[] = { x1,    y1,
                 x1+x2, y1,
                 x1+x2, y1+y2,
-                x1,    y1+y2 };
+                x1,    y1+y2,
+                x1,    y1};
   if (this->Transform)
     {
-    this->Transform->TransformPoints(&p[0], &p[0], 4);
+    this->Transform->TransformPoints(&p[0], &p[0], 5);
     }
 
   // Draw the filled area of the rectangle.
   this->ApplyBrush();
   this->Device->DrawQuad(&p[0], 4);
 
-    // Draw the outline now.
+  // Draw the outline now.
   this->ApplyPen();
-  this->Device->DrawPoly(p, 4);
-  float closeLine[] = { p[0], p[1], p[6], p[7] };
-  this->Device->DrawPoly(&closeLine[0], 2);
+  this->Device->DrawPoly(&p[0], 5);
 }
 
 //-----------------------------------------------------------------------------
@@ -375,11 +384,21 @@ vtkContext2D::vtkContext2D()
 vtkContext2D::~vtkContext2D()
 {
   this->Pen->Delete();
-  this->Pen = 0;
+  this->Pen = NULL;
   this->Brush->Delete();
-  this->Brush = 0;
+  this->Brush = NULL;
   this->TextProp->Delete();
-  this->TextProp = 0;
+  this->TextProp = NULL;
+  if (this->Device)
+    {
+    this->Device->Delete();
+    this->Device = NULL;
+    }
+  if (this->Transform)
+    {
+    this->Transform->Delete();
+    this->Transform = NULL;
+    }
 }
 
 //-----------------------------------------------------------------------------

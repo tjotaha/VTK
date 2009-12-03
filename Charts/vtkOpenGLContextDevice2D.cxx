@@ -36,9 +36,8 @@
 
 #ifdef VTK_USE_QT
   #include "vtkQtLabelRenderStrategy.h"
-#else
-  #include "vtkFreeTypeLabelRenderStrategy.h"
 #endif
+#include "vtkFreeTypeLabelRenderStrategy.h"
 
 #include "vtkObjectFactory.h"
 
@@ -49,9 +48,21 @@ public:
   Private()
   {
     this->texture = 0;
+    this->lightingEnabled = GL_TRUE;
+    this->depthTestEnabled = GL_TRUE;
+  }
+  ~Private()
+  {
+    if (this->texture)
+      {
+      this->texture->Delete();
+      }
   }
 
   vtkTexture *texture;
+  // Store the previous GL state so that we can restore it when complete
+  GLboolean lightingEnabled;
+  GLboolean depthTestEnabled;
 };
 
 //-----------------------------------------------------------------------------
@@ -93,15 +104,17 @@ void vtkOpenGLContextDevice2D::Begin(vtkViewport* viewport)
   glLoadIdentity();
   glOrtho( 0.5, size[0]+0.5,
            0.5, size[1]+0.5,
-          -1, 0);
+          -1, 1);
 
   glMatrixMode(GL_MODELVIEW);
   glPushMatrix();
   glLoadIdentity();
 
+  // Store the previous state before changing it
+  this->Storage->lightingEnabled = glIsEnabled(GL_LIGHTING);
+  this->Storage->depthTestEnabled = glIsEnabled(GL_DEPTH_TEST);
   glDisable(GL_LIGHTING);
-
-  glDepthMask(GL_FALSE);
+  glDisable(GL_DEPTH_TEST);
 
   this->Renderer = vtkRenderer::SafeDownCast(viewport);
   this->TextRenderer->SetRenderer(this->Renderer);
@@ -127,15 +140,22 @@ void vtkOpenGLContextDevice2D::End()
     {
     this->TextRenderer->EndFrame();
     }
-// push a 2D matrix on the stack
-  glMatrixMode( GL_PROJECTION);
+  this->TextRenderer->SetRenderer(0);
+  // push a 2D matrix on the stack
+  glMatrixMode(GL_PROJECTION);
   glPopMatrix();
-  glMatrixMode( GL_MODELVIEW);
+  glMatrixMode(GL_MODELVIEW);
   glPopMatrix();
-  glEnable( GL_LIGHTING);
 
-  // Turn it back on in case we've turned it off
-  glDepthMask( GL_TRUE );
+  // Restore the GL state that we changed
+  if (this->Storage->lightingEnabled)
+    {
+    glEnable(GL_LIGHTING);
+    }
+  if (this->Storage->depthTestEnabled)
+    {
+    glEnable(GL_DEPTH_TEST);
+    }
 
   this->Modified();
 }
@@ -143,28 +163,10 @@ void vtkOpenGLContextDevice2D::End()
 //-----------------------------------------------------------------------------
 void vtkOpenGLContextDevice2D::DrawPoly(float *f, int n)
 {
-/*  if (f && n == 4)
-    {
-    float p[] = { f[0], f[1], 0.0,
-                  f[2], f[3], 0.0,
-                  f[4], f[5], 0.0,
-                  f[6], f[7], 0.0 };
-    glMap1f(GL_MAP1_VERTEX_3, 0.0, 1.0, 3, 4, &p[0]);
-    glEnable(GL_MAP1_VERTEX_3);
-    glBegin(GL_LINE_STRIP);
-      for (int i = 0; i <= 30; ++i)
-        {
-        glEvalCoord1f(float(i / 30.0));
-        }
-    glEnd();
-    glDisable(GL_MAP1_VERTEX_3);
-    this->DrawPoints(f, 4);
-    }
-*/
   if(f && n > 0)
     {
     glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(2, GL_FLOAT, 0, &f[0]);
+    glVertexPointer(2, GL_FLOAT, 0, f);
     glDrawArrays(GL_LINE_STRIP, 0, n);
     glDisableClientState(GL_VERTEX_ARRAY);
     }
@@ -188,7 +190,7 @@ void vtkOpenGLContextDevice2D::DrawPoints(float *f, int n)
       }
 
     glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(2, GL_FLOAT, 0, &f[0]);
+    glVertexPointer(2, GL_FLOAT, 0, f);
     glDrawArrays(GL_POINTS, 0, n);
     glDisableClientState(GL_VERTEX_ARRAY);
 
@@ -337,6 +339,40 @@ void vtkOpenGLContextDevice2D::SetClipping(int *x)
 void vtkOpenGLContextDevice2D::DisableClipping()
 {
   glDisable(GL_SCISSOR_TEST);
+}
+
+//-----------------------------------------------------------------------------
+bool vtkOpenGLContextDevice2D::SetStringRendererToFreeType()
+{
+#ifdef VTK_USE_QT
+  // We will likely be using the Qt rendering strategy
+  if (this->TextRenderer->IsA("vtkQtLabelRenderStrategy"))
+    {
+    this->TextRenderer->Delete();
+    this->TextRenderer = vtkFreeTypeLabelRenderStrategy::New();
+    }
+#endif
+  // FreeType is the only choice - nothing to do here
+  return true;
+}
+
+//-----------------------------------------------------------------------------
+bool vtkOpenGLContextDevice2D::SetStringRendererToQt()
+{
+#ifdef VTK_USE_QT
+  // We will likely be using the Qt rendering strategy
+  if (this->TextRenderer->IsA("vtkQtLabelRenderStrategy"))
+    {
+    return true;
+    }
+  else
+    {
+    this->TextRenderer->Delete();
+    this->TextRenderer = vtkQtLabelRenderStrategy::New();
+    }
+#endif
+  // The Qt based strategy is not available
+  return false;
 }
 
 //-----------------------------------------------------------------------------
