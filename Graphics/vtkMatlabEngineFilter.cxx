@@ -424,9 +424,7 @@ int vtkMatlabEngineFilter::RequestData(vtkInformation *vtkNotUsed(request),
   else if( tableinp ) /* vtkTable input */
     {
 
-    int numCols = tableinp->GetNumberOfColumns();
-    
-    if( numCols )
+    if(!tableinp->GetNumberOfColumns())
       {
       vtkErrorMacro(<<"Empty Input Table");
       return(1);
@@ -460,7 +458,7 @@ int vtkMatlabEngineFilter::RequestData(vtkInformation *vtkNotUsed(request),
         vtkErrorMacro(<<"Array Name not in Table " << VectorIterator->VTKArrName.c_str());
         return(1);
         }
-      } 
+      }
 
     if(this->MatlabScript)
       {

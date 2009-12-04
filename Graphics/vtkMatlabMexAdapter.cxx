@@ -80,7 +80,7 @@ int FindArrayIndex(vtkArrayCoordinates& coordinates, const vtkArrayExtents& exte
 
 }
 
-template<typename T> mxArray* CopyVTKArrayTomxArray(vtkTypedArray<T>* da, mxClassID mt, bool ShallowCopy)
+template<typename T> mxArray* CopyVTKArrayTomxArray(vtkTypedArray<T>* da, mxClassID mt)
 {
 
   mxArray* output;
@@ -94,30 +94,6 @@ template<typename T> mxArray* CopyVTKArrayTomxArray(vtkTypedArray<T>* da, mxClas
   for(i=0;i<da->GetDimensions();i++)
     {
     dims[i] = da->GetExtents()[i];
-    }
-
-  if(ShallowCopy)
-    {
-    vtkDenseArray<T>* dap;
-
-    if( vtkDenseArray<T>::SafeDownCast(da) )
-      {
-    dap = vtkDenseArray<T>::SafeDownCast(da);
-
-    mwSize d[2];
-
-    d[0] = 0;
-    d[1] = 0;
-
-    mxArray* mxa = mxCreateNumericArray(2,d,mt,mxREAL);
-
-    mxSetDimensions(mxa,dims,dap->GetDimensions());
-
-    mxSetData(mxa, (void*) dap->GetStorage());
-
-    return(mxa);
-      }
-
     }
 
   output = mxCreateNumericArray(da->GetDimensions(),dims,mt,mxREAL);
@@ -140,7 +116,7 @@ template<typename T> mxArray* CopyVTKArrayTomxArray(vtkTypedArray<T>* da, mxClas
 
 };
 
-template<typename T> vtkArray* CopymxArrayToVTKArray(mxArray* mxa, int ValueType, bool vtkNotUsed(ShallowCopy))
+template<typename T> vtkArray* CopymxArrayToVTKArray(mxArray* mxa, int ValueType)
 {
 
   vtkTypedArray<T>* da;
@@ -348,7 +324,7 @@ mxArray* vtkMatlabMexAdapter::vtkDataArrayToMxArray(vtkDataArray* aa, bool Shall
 
   if( aa == NULL )
     {
-    cerr << "NULL input to vtkDataArrayToMxArray()" << endl;
+    vtkGenericWarningMacro(<<"NULL input to vtkDataArrayToMxArray()");
     return(NULL);
     }
 
@@ -386,7 +362,7 @@ mxArray* vtkMatlabMexAdapter::vtkDataArrayToMxArray(vtkDataArray* aa, bool Shall
 
   if (nbytes != aa->GetElementComponentSize())
     {
-    cerr << "Data size mismatch between Matlab and VTK" << endl;
+    vtkGenericWarningMacro(<<"Data size mismatch between Matlab and VTK");
     return(NULL);
     }
 
@@ -429,25 +405,25 @@ vtkDataArray* vtkMatlabMexAdapter::mxArrayTovtkDataArray(const mxArray* mxa, boo
 
   if( mxa == NULL )
     {
-    cerr << "NULL input to mxArrayTovtkDataArray()" << endl;
+    vtkGenericWarningMacro(<<"NULL input to mxArrayTovtkDataArray()");
     return(NULL);
     }
 
   if( mxGetNumberOfDimensions(mxa) > 2 )
     {
-    cerr << "Input to mxArrayTovtkDataArray() has more than two dimensions, cannot convert to vtkDataArray" << endl;
+    vtkGenericWarningMacro(<<"Input to mxArrayTovtkDataArray() has more than two dimensions, cannot convert to vtkDataArray");
     return(NULL);
     }
 
   if( mxIsCell(mxa) )
     {
-    cerr << "Input to mxArrayTovtkDataArray() is a Cell Array, cannot convert to vtkDataArray" << endl;
+    vtkGenericWarningMacro(<<"Input to mxArrayTovtkDataArray() is a Cell Array, cannot convert to vtkDataArray");
     return(NULL);
     }
 
   if( mxIsSparse(mxa) )
     {
-    cerr << "Input to mxArrayTovtkDataArray() is a Sparse Array, cannot convert to vtkDataArray" << endl;
+    vtkGenericWarningMacro(<<"Input to mxArrayTovtkDataArray() is a Sparse Array, cannot convert to vtkDataArray");
     return(NULL);
     }
 
@@ -461,7 +437,7 @@ vtkDataArray* vtkMatlabMexAdapter::mxArrayTovtkDataArray(const mxArray* mxa, boo
   if (nbytes != da->GetElementComponentSize())
     {
     da->Delete();
-    cerr << "Data size mismatch between Matlab and VTK" << endl;
+    vtkGenericWarningMacro(<<"Data size mismatch between Matlab and VTK");
     return(NULL);
     }
 
@@ -470,7 +446,7 @@ vtkDataArray* vtkMatlabMexAdapter::mxArrayTovtkDataArray(const mxArray* mxa, boo
 
   if(ShallowCopy)
     {
-    da->SetVoidArray(mxGetData(mxa),(vtkIdType) nr*nc, 0);
+    da->SetVoidArray(mxGetData(mxa),(vtkIdType) nr*nc, 1);
     return(da);
     }
 
@@ -501,73 +477,73 @@ vtkDataArray* vtkMatlabMexAdapter::mxArrayTovtkDataArray(const mxArray* mxa, boo
 
 // Create a mxArray from a vtkArray (Allocates memory)
 
-mxArray* vtkMatlabMexAdapter::vtkArrayToMxArray(vtkArray* va, bool ShallowCopy)
+mxArray* vtkMatlabMexAdapter::vtkArrayToMxArray(vtkArray* va)
 {
 
   if( va == NULL )
     {
-    cerr << "NULL input to vtkArrayToMxArray()" << endl;
+    vtkGenericWarningMacro(<<"NULL input to vtkArrayToMxArray()");
     }
 
   if(vtkTypedArray<unsigned char>::SafeDownCast(va))
     {
     return(CopyVTKArrayTomxArray<unsigned char>(vtkTypedArray<unsigned char>::SafeDownCast(va),
-           mxUINT8_CLASS,ShallowCopy));
+           mxUINT8_CLASS));
     }
   else if(vtkTypedArray<char>::SafeDownCast(va))
     {
     return(CopyVTKArrayTomxArray<char>(vtkTypedArray<char>::SafeDownCast(va),
-           mxINT8_CLASS,ShallowCopy));
+           mxINT8_CLASS));
     }
   else if(vtkTypedArray<short>::SafeDownCast(va))
     {
     return(CopyVTKArrayTomxArray<short>(vtkTypedArray<short>::SafeDownCast(va),
-           mxINT16_CLASS,ShallowCopy));
+           mxINT16_CLASS));
     }
   else if(vtkTypedArray<unsigned short>::SafeDownCast(va))
     {
     return(CopyVTKArrayTomxArray<unsigned short>(vtkTypedArray<unsigned short>::SafeDownCast(va),
-           mxUINT16_CLASS,ShallowCopy));
+           mxUINT16_CLASS));
     }
   else if(vtkTypedArray<int>::SafeDownCast(va))
     {
     return(CopyVTKArrayTomxArray<int>(vtkTypedArray<int>::SafeDownCast(va),
-           mxINT32_CLASS,ShallowCopy));
+           mxINT32_CLASS));
     }
   else if(vtkTypedArray<vtkIdType>::SafeDownCast(va))
     {
     return(CopyVTKArrayTomxArray<vtkIdType>(vtkTypedArray<vtkIdType>::SafeDownCast(va),
-           mxINT32_CLASS,ShallowCopy));
+           mxINT32_CLASS));
     }
   else if(vtkTypedArray<unsigned int>::SafeDownCast(va))
     {
     return(CopyVTKArrayTomxArray<unsigned int>(vtkTypedArray<unsigned int>::SafeDownCast(va),
-           mxUINT32_CLASS,ShallowCopy));
+           mxUINT32_CLASS));
     }
   else if(vtkTypedArray<long>::SafeDownCast(va))
     {
     return(CopyVTKArrayTomxArray<long>(vtkTypedArray<long>::SafeDownCast(va),
-           mxINT64_CLASS,ShallowCopy));
+           mxINT64_CLASS));
     }
   else if(vtkTypedArray<unsigned long>::SafeDownCast(va))
     {
     return(CopyVTKArrayTomxArray<unsigned long>(vtkTypedArray<unsigned long>::SafeDownCast(va),
-           mxUINT64_CLASS,ShallowCopy));
+           mxUINT64_CLASS));
     }
   else if(vtkTypedArray<float>::SafeDownCast(va))
     {
     return(CopyVTKArrayTomxArray<float>(vtkTypedArray<float>::SafeDownCast(va),
-           mxSINGLE_CLASS,ShallowCopy));
+           mxSINGLE_CLASS));
     }
   else if(vtkTypedArray<double>::SafeDownCast(va))
     {
     return(CopyVTKArrayTomxArray<double>(vtkTypedArray<double>::SafeDownCast(va),
-           mxDOUBLE_CLASS,ShallowCopy));
+           mxDOUBLE_CLASS));
     }
   else
     {
     return(CopyVTKArrayTomxArray<double>(vtkTypedArray<double>::SafeDownCast(va),
-           mxDOUBLE_CLASS,ShallowCopy));
+           mxDOUBLE_CLASS));
     }
 
 }
@@ -575,60 +551,60 @@ mxArray* vtkMatlabMexAdapter::vtkArrayToMxArray(vtkArray* va, bool ShallowCopy)
 
 // Create a vtkArray from an mxArray (Allocates memory)
 
-vtkArray* vtkMatlabMexAdapter::mxArrayTovtkArray(mxArray* mxa, bool ShallowCopy)
+vtkArray* vtkMatlabMexAdapter::mxArrayTovtkArray(mxArray* mxa)
 {
 
   if( mxa == NULL )
     {
-    cerr << "NULL input to mxArrayTovtkArray()" << endl;
+    vtkGenericWarningMacro(<<"NULL input to mxArrayTovtkArray()");
     }
 
   if(mxGetClassID(mxa) == mxCELL_CLASS)
     {
-    cerr << " Unable to convert input mwArray cell array to vtArray in mxArrayTovtkArray()" << endl;
+    vtkGenericWarningMacro(<<" Unable to convert input mwArray cell array to vtArray in mxArrayTovtkArray()");
     return(NULL);
     }
 
   switch(mxGetClassID(mxa))
     {
     case mxCHAR_CLASS:
-      return(CopymxArrayToVTKArray<char>(mxa,VTK_CHAR,ShallowCopy));
+      return(CopymxArrayToVTKArray<char>(mxa,VTK_CHAR));
       break;
     case mxLOGICAL_CLASS:
-      return(CopymxArrayToVTKArray<unsigned char>(mxa, VTK_BIT,ShallowCopy));
+      return(CopymxArrayToVTKArray<unsigned char>(mxa, VTK_BIT));
       break;
     case mxDOUBLE_CLASS:
-      return(CopymxArrayToVTKArray<double>(mxa,VTK_DOUBLE,ShallowCopy));
+      return(CopymxArrayToVTKArray<double>(mxa,VTK_DOUBLE));
       break;
     case mxSINGLE_CLASS:
-      return(CopymxArrayToVTKArray<float>(mxa,VTK_FLOAT,ShallowCopy));
+      return(CopymxArrayToVTKArray<float>(mxa,VTK_FLOAT));
       break;
     case mxINT8_CLASS:
-      return(CopymxArrayToVTKArray<short>(mxa,VTK_SHORT,ShallowCopy));
+      return(CopymxArrayToVTKArray<short>(mxa,VTK_SHORT));
       break;
     case mxUINT8_CLASS:
-      return(CopymxArrayToVTKArray<unsigned char>(mxa,VTK_UNSIGNED_CHAR,ShallowCopy));
+      return(CopymxArrayToVTKArray<unsigned char>(mxa,VTK_UNSIGNED_CHAR));
       break;
     case mxINT16_CLASS:
-      return(CopymxArrayToVTKArray<short>(mxa,VTK_SHORT,ShallowCopy));
+      return(CopymxArrayToVTKArray<short>(mxa,VTK_SHORT));
       break;
     case mxUINT16_CLASS:
-      return(CopymxArrayToVTKArray<unsigned short>(mxa,VTK_UNSIGNED_SHORT,ShallowCopy));
+      return(CopymxArrayToVTKArray<unsigned short>(mxa,VTK_UNSIGNED_SHORT));
       break;
     case mxINT32_CLASS:
-      return(CopymxArrayToVTKArray<int>(mxa,VTK_INT,ShallowCopy));
+      return(CopymxArrayToVTKArray<int>(mxa,VTK_INT));
       break;
     case mxUINT32_CLASS:
-      return(CopymxArrayToVTKArray<unsigned int>(mxa,VTK_UNSIGNED_INT,ShallowCopy));
+      return(CopymxArrayToVTKArray<unsigned int>(mxa,VTK_UNSIGNED_INT));
       break;
     case mxINT64_CLASS:
-      return(CopymxArrayToVTKArray<long>(mxa,VTK_LONG,ShallowCopy));
+      return(CopymxArrayToVTKArray<long>(mxa,VTK_LONG));
       break;
     case mxUINT64_CLASS:
-      return(CopymxArrayToVTKArray<unsigned long>(mxa,VTK_UNSIGNED_LONG,ShallowCopy));
+      return(CopymxArrayToVTKArray<unsigned long>(mxa,VTK_UNSIGNED_LONG));
       break;
     default:
-      return(CopymxArrayToVTKArray<double>(mxa,VTK_DOUBLE,ShallowCopy));
+      return(CopymxArrayToVTKArray<double>(mxa,VTK_DOUBLE));
       break;
     }
 
@@ -636,7 +612,7 @@ vtkArray* vtkMatlabMexAdapter::mxArrayTovtkArray(mxArray* mxa, bool ShallowCopy)
 
 // Create a mxArray from a vtkGraph (Allocates memory)
 
-mxArray* vtkMatlabMexAdapter::vtkGraphToMxArray(vtkGraph* ga, bool vtkNotUsed(ShallowCopy))
+mxArray* vtkMatlabMexAdapter::vtkGraphToMxArray(vtkGraph* ga)
 {
 
   mxArray* output;
@@ -647,7 +623,7 @@ mxArray* vtkMatlabMexAdapter::vtkGraphToMxArray(vtkGraph* ga, bool vtkNotUsed(Sh
 
   if( ga == NULL )
     {
-    cerr << "NULL input to vtkGraphToMxArray()" << endl;
+    vtkGenericWarningMacro(<<"NULL input to vtkGraphToMxArray()");
     }
 
   if(vtkDirectedGraph::SafeDownCast(ga))
@@ -745,7 +721,7 @@ mxArray* vtkMatlabMexAdapter::vtkGraphToMxArray(vtkGraph* ga, bool vtkNotUsed(Sh
 
 // Create a vtkGraph from an mxArray (Allocates memory)
 
-vtkGraph* vtkMatlabMexAdapter::mxArrayTovtkGraph(mxArray* mxa, bool vtkNotUsed(ShallowCopy))
+vtkGraph* vtkMatlabMexAdapter::mxArrayTovtkGraph(mxArray* mxa)
 {
 
   int nr;
@@ -757,17 +733,17 @@ vtkGraph* vtkMatlabMexAdapter::mxArrayTovtkGraph(mxArray* mxa, bool vtkNotUsed(S
 
   if( mxa == NULL )
     {
-    cerr << "NULL input to mxArrayTovtkGraph()" << endl;
+    vtkGenericWarningMacro(<<"NULL input to mxArrayTovtkGraph()");
     }
 
   if( mxGetNumberOfFields(mxa) > 1 )
     {
-    cerr << "Input to mxArrayTovtkGraph() has multiple fields, cannot convert to vtkGraph" << endl;
+    vtkGenericWarningMacro(<<"Input to mxArrayTovtkGraph() has multiple fields, cannot convert to vtkGraph");
     }
 
   if( mxGetNumberOfDimensions(mxa) != 2 )
     {
-    cerr << "Input to mxArrayTovtkGraph() does not have two dimensions, cannot convert to vtkGraph" << endl;
+    vtkGenericWarningMacro(<<"Input to mxArrayTovtkGraph() does not have two dimensions, cannot convert to vtkGraph");
     }
 
   nr = mxGetM(mxa);
@@ -775,7 +751,7 @@ vtkGraph* vtkMatlabMexAdapter::mxArrayTovtkGraph(mxArray* mxa, bool vtkNotUsed(S
 
   if( nr != nc )
     {
-    cerr << "Input to mxArrayTovtkGraph() is not square, cannot convert to vtkGraph" << endl;
+    vtkGenericWarningMacro(<<"Input to mxArrayTovtkGraph() is not square, cannot convert to vtkGraph");
     }
 
 // Check input matrix for symmetry, if symmetric create an instance vtkMutableUndirectedGraph()

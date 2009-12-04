@@ -134,7 +134,8 @@ int TestRCalculatorFilter(int vtkNotUsed(argc), char *vtkNotUsed(argv)[])
     rf->SetRscript("a[,,] = sqrt(a[,,] + 5.0)\n");
     rf->Update();
 
-    vtkDenseArray<double>* const dense_array = vtkDenseArray<double>::SafeDownCast(vtkArrayData::SafeDownCast(rf->GetOutput())->GetArray(1));
+    vtkDenseArray<double>* const dense_array = 
+                 vtkDenseArray<double>::SafeDownCast(vtkArrayData::SafeDownCast(rf->GetOutput())->GetArray(1));
     test_expression(dense_array);
 
     for(i=0;i<table->GetNumberOfColumns();i++)
@@ -156,7 +157,7 @@ int TestRCalculatorFilter(int vtkNotUsed(argc), char *vtkNotUsed(argv)[])
     }
   catch(vtkstd::exception& e)
     {
-    cerr << e.what() << endl;
+    vtkstd::cerr << e.what() << endl;
     return 1;
     }
 }

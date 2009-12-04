@@ -66,10 +66,69 @@ int TestRInterface(int vtkNotUsed(argc), char *vtkNotUsed(argv)[])
 
     rint->OutputBuffer(buffer, buf_size);
     rint->EvalRscript("1:10\n");
-    cout << buffer << endl;
     test_expression(strlen(buffer) > 10);
 
+    da->SetNumberOfComponents(3);
+    for( int cc = 0; cc < 10; cc ++ )
+      {
+      da->InsertNextTuple3( cc + 0.1, cc + 0.2, cc + 0.3);
+      }
+    rint->AssignVTKDataArrayToRVariable(da, "d");
+    rint->EvalRscript("d[,1] = d[,1] - 0.1\n\
+                       d[,2] = d[,2] - 0.2\n\
+                       d[,3] = d[,3] - 0.3\n");
+    vtkDoubleArray* rda = vtkDoubleArray::SafeDownCast(rint->AssignRVariableToVTKDataArray("d"));
+    for(int i = 0;i<rda->GetNumberOfTuples();i++)
+      {
+      double* iv = da->GetTuple3(i);
+      double* rv = rda->GetTuple3(i);
+      test_expression(doubleEquals(iv[0] - 0.1,rv[0],0.001));
+      test_expression(doubleEquals(iv[1] - 0.2,rv[1],0.001));
+      test_expression(doubleEquals(iv[2] - 0.3,rv[2],0.001));
+      }
+    rda->Delete();
 
+    dda->Resize(vtkArrayExtents(3, 3, 3));
+    dda->Fill(64.0);
+    rint->AssignVTKArrayToRVariable(dda, "a");
+    rint->EvalRscript("a = sqrt(a)\n");
+    vtkDenseArray<double>* rdda = vtkDenseArray<double>::SafeDownCast(rint->AssignRVariableToVTKArray("a"));
+    const vtkArrayExtents extents = rdda->GetExtents();
+    for(int i = 0; i != extents[0]; ++i)
+      {
+      for(int j = 0; j != extents[1]; ++j)
+        {
+        for(int k = 0; k != extents[2]; ++k)
+          {
+          test_expression(doubleEquals(sqrt(dda->GetValue(vtkArrayCoordinates(i, j, k))),
+                                       rdda->GetValue(vtkArrayCoordinates(i, j, k)),
+                                       0.001));
+          }
+        }
+      }
+    rdda->Delete();
+
+    rts->SetNumberOfRows(20);
+    rts->SetStatisticalDistributionForColumn(vtkRRandomTableSource::NORMAL,0.0,1.0,0.0,"Variable One",0);
+    rts->SetStatisticalDistributionForColumn(vtkRRandomTableSource::NORMAL,0.0,1.0,0.0,"Variable Two",1);
+    rts->SetStatisticalDistributionForColumn(vtkRRandomTableSource::NORMAL,0.0,1.0,0.0,"Variable Three",2);
+    rts->SetStatisticalDistributionForColumn(vtkRRandomTableSource::NORMAL,0.0,1.0,0.0,"Variable Four",3);
+    rts->Update();
+    vtkTable* itable = rts->GetOutput();
+    rint->AssignVTKTableToRVariable(itable,"t");
+    rint->EvalRscript("t = matrix(unlist(t),nrow=length(t[[1]]),ncol=length(t))\n\
+                       t = t - t\n");
+    vtkTable* table = rint->AssignRVariableToVTKTable("t");
+    for(int i=0;i<table->GetNumberOfColumns();i++)
+      {
+      for(int j=0;j<table->GetNumberOfRows();j++)
+        {
+        double i_val = itable->GetValue(i,j).ToDouble() - itable->GetValue(i,j).ToDouble();
+        double r_val = table->GetValue(i,j).ToDouble();
+        test_expression(doubleEquals(i_val,r_val,0.0001));
+        }
+      }
+    table->Delete();
 
     delete [] buffer;
     rts->Delete();

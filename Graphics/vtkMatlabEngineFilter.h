@@ -22,8 +22,8 @@
 //
 // .SECTION Description
 //
-// This VTK filter is based on the vtkArrayCalculator filter, and uses the vtkMatlabEngineInterface 
-// class to perform calculations on VTK array input using the Matlab Engine.
+// This VTK uses the vtkMatlabEngineInterface class to perform calculations on 
+// VTK array input using the Matlab Engine.
 //
 // .SECTION See Also
 //  vtkMatlabMexAdapter vtkMatlabMexInterface

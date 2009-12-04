@@ -310,13 +310,13 @@ vtkTable* vtkRAdapter::RToVTKTable(SEXP variable)
         {
         if(length(VECTOR_ELT(variable,j)) != nr)
           {
-          cerr << "Cannot convert R data type to vtkTable" << endl;
+          vtkGenericWarningMacro(<<"Cannot convert R data type to vtkTable");
           return(0);
           }
         }
       else
         {
-        cerr << "Cannot convert R data type to vtkTable" << endl;
+        vtkGenericWarningMacro(<<"Cannot convert R data type to vtkTable");
         return(0);
         }
       }
@@ -372,7 +372,7 @@ vtkTable* vtkRAdapter::RToVTKTable(SEXP variable)
     }
   else
     {
-    cerr << "Cannot convert R data type to vtkTable" << endl;
+    vtkGenericWarningMacro(<<"Cannot convert R data type to vtkTable");
     return(0);
     }
 

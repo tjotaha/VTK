@@ -47,7 +47,7 @@
 
 class vtkArray;
 class vtkDataArray;
-class MatlabEngineSingleton;
+class vtkMatlabEngineSingleton;
 
 class VTK_GRAPHICS_EXPORT vtkMatlabEngineInterface : public vtkObject
 {
@@ -81,7 +81,7 @@ public:
 
   // Description:
   // Send input vtkArray vda to the Matlab Engine as Matlab variable named name
-  // Returns 0 if variable was not created.
+  // Returns 0 if variable was not created. 
   int PutVtkArray(const char* name, vtkArray* vda);
 
   // Description:
@@ -113,7 +113,7 @@ private:
   vtkMatlabEngineInterface(const vtkMatlabEngineInterface&);  // Not implemented.
   void operator=(const vtkMatlabEngineInterface&);  // Not implemented.
 
-  MatlabEngineSingleton* meng;
+  vtkMatlabEngineSingleton* meng;
 
 };
 

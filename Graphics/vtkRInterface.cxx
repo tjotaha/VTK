@@ -43,12 +43,16 @@ vtkStandardNewMacro(vtkRInterface);
 
 #include "R_ext/Parse.h"
 
-class R_SingletonDestroyer;
+namespace {
+vtkstd::string tmpFilePath;
+}
 
-class R_Singleton
+class vtkImplementationRSingletonDestroyer;
+
+class vtkImplementationRSingleton
 {
 public:
-  static R_Singleton* Instance();
+  static vtkImplementationRSingleton* Instance();
 
   void InitializeR()
   {
@@ -86,60 +90,60 @@ public:
 
 protected:
 
-  friend class R_SingletonDestroyer;
+  friend class vtkImplementationRSingletonDestroyer;
 
-  ~R_Singleton();
+  ~vtkImplementationRSingleton();
 
-  R_Singleton();
+  vtkImplementationRSingleton();
 
-  R_Singleton(const R_Singleton&);
+  vtkImplementationRSingleton(const vtkImplementationRSingleton&);
 
-  R_Singleton& operator=(const R_Singleton&);
+  vtkImplementationRSingleton& operator=(const vtkImplementationRSingleton&);
 
 private:
 
   int refcount;
   int Rinitialized;
-  static R_Singleton* ins;
-  static R_SingletonDestroyer destroyer;
+  static vtkImplementationRSingleton* ins;
+  static vtkImplementationRSingletonDestroyer destroyer;
 
 };
 
-class R_SingletonDestroyer {
+class vtkImplementationRSingletonDestroyer {
 public:
-  R_SingletonDestroyer();
-  ~R_SingletonDestroyer();
+  vtkImplementationRSingletonDestroyer();
+  ~vtkImplementationRSingletonDestroyer();
 
-  void SetSingleton(R_Singleton* s);
+  void SetSingleton(vtkImplementationRSingleton* s);
 private:
-  R_Singleton* _singleton;
+  vtkImplementationRSingleton* _singleton;
 };
 
 
-R_Singleton* R_Singleton::ins = 0;
+vtkImplementationRSingleton* vtkImplementationRSingleton::ins = 0;
 
-R_SingletonDestroyer R_Singleton::destroyer;
+vtkImplementationRSingletonDestroyer vtkImplementationRSingleton::destroyer;
 
-R_SingletonDestroyer::R_SingletonDestroyer () {
+vtkImplementationRSingletonDestroyer::vtkImplementationRSingletonDestroyer () {
   _singleton = 0;
 }
 
-R_SingletonDestroyer::~R_SingletonDestroyer () {
+vtkImplementationRSingletonDestroyer::~vtkImplementationRSingletonDestroyer () {
 
   delete _singleton;
 }
 
-void R_SingletonDestroyer::SetSingleton (R_Singleton* s) {
+void vtkImplementationRSingletonDestroyer::SetSingleton (vtkImplementationRSingleton* s) {
   _singleton = s;
 }
 
 
-R_Singleton* R_Singleton::Instance()
+vtkImplementationRSingleton* vtkImplementationRSingleton::Instance()
 {
 
   if(ins == 0)
     {
-    ins = new R_Singleton;
+    ins = new vtkImplementationRSingleton;
     destroyer.SetSingleton(ins);
     }
 
@@ -149,13 +153,13 @@ R_Singleton* R_Singleton::Instance()
 }
 
 
-R_Singleton::~R_Singleton()
+vtkImplementationRSingleton::~vtkImplementationRSingleton()
 {
 
 
 }
 
-R_Singleton::R_Singleton()
+vtkImplementationRSingleton::vtkImplementationRSingleton()
 {
 
   this->refcount = 0;
@@ -168,13 +172,14 @@ vtkRInterface::vtkRInterface()
 {
 
   vtkstd::string  rcommand;
-  this->rs = R_Singleton::Instance();
+  this->rs = vtkImplementationRSingleton::Instance();
   rcommand.append("f<-file(paste(tempdir(), \"/Routput.txt\", sep = \"\"), open=\"wt+\")");
-  this->tmpFilePath.append(R_TempDir);
+  tmpFilePath.clear();
+  tmpFilePath.append(R_TempDir);
 #ifdef WIN32
-  this->tmpFilePath.append("\\Routput.txt");
+  tmpFilePath.append("\\Routput.txt");
 #else
-  this->tmpFilePath.append("/Routput.txt");
+  tmpFilePath.append("/Routput.txt");
 #endif
   this->EvalRscript(rcommand.c_str(), false);
   this->EvalRscript("sink(f)", false);
@@ -354,11 +359,11 @@ int vtkRInterface::FillOutputBuffer()
 
   if(this->buffer && (this->buffer_size > 0) )
     {
-    fp = fopen(this->tmpFilePath.c_str(),"rb");
+    fp = fopen(tmpFilePath.c_str(),"rb");
 
     if(!fp)
       {
-      vtkErrorMacro(<<"Can't open input file named " << this->tmpFilePath.c_str());
+      vtkErrorMacro(<<"Can't open input file named " << tmpFilePath.c_str());
       return(0);
       }
 

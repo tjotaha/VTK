@@ -36,12 +36,12 @@
 vtkCxxRevisionMacro(vtkMatlabEngineInterface, "$Revision: 14946 $");
 vtkStandardNewMacro(vtkMatlabEngineInterface);
 
-class SingletonDestroyer;
+class vtkMatlabEngineSingletonDestroyer;
 
-class MatlabEngineSingleton
+class vtkMatlabEngineSingleton
 {
 public:
-  static MatlabEngineSingleton* Instance();
+  static vtkMatlabEngineSingleton* Instance();
 
   int EngineOpen()
   {
@@ -110,59 +110,59 @@ public:
 
 protected:
 
-  friend class SingletonDestroyer;
+  friend class vtkMatlabEngineSingletonDestroyer;
 
-  ~MatlabEngineSingleton();
+  ~vtkMatlabEngineSingleton();
 
-  MatlabEngineSingleton();
+  vtkMatlabEngineSingleton();
 
-  MatlabEngineSingleton(const MatlabEngineSingleton&);
+  vtkMatlabEngineSingleton(const vtkMatlabEngineSingleton&);
 
-  MatlabEngineSingleton& operator=(const MatlabEngineSingleton&);
+  vtkMatlabEngineSingleton& operator=(const vtkMatlabEngineSingleton&);
 
 private:
 
   int refcount;
-  static MatlabEngineSingleton* ins;
-  static SingletonDestroyer destroyer;
+  static vtkMatlabEngineSingleton* ins;
+  static vtkMatlabEngineSingletonDestroyer destroyer;
   Engine* ep;
 
 };
 
-class SingletonDestroyer {
+class vtkMatlabEngineSingletonDestroyer {
 public:
-  SingletonDestroyer();
-  ~SingletonDestroyer();
+  vtkMatlabEngineSingletonDestroyer();
+  ~vtkMatlabEngineSingletonDestroyer();
 
-  void SetSingleton(MatlabEngineSingleton* s);
+  void SetSingleton(vtkMatlabEngineSingleton* s);
 private:
-  MatlabEngineSingleton* _singleton;
+  vtkMatlabEngineSingleton* _singleton;
 };
 
 
-MatlabEngineSingleton* MatlabEngineSingleton::ins = 0;
+vtkMatlabEngineSingleton* vtkMatlabEngineSingleton::ins = 0;
 
-SingletonDestroyer MatlabEngineSingleton::destroyer;
+vtkMatlabEngineSingletonDestroyer vtkMatlabEngineSingleton::destroyer;
 
-SingletonDestroyer::SingletonDestroyer () {
+vtkMatlabEngineSingletonDestroyer::vtkMatlabEngineSingletonDestroyer () {
   _singleton = 0;
 }
 
-SingletonDestroyer::~SingletonDestroyer () {
+vtkMatlabEngineSingletonDestroyer::~vtkMatlabEngineSingletonDestroyer () {
   delete _singleton;
 }
 
-void SingletonDestroyer::SetSingleton (MatlabEngineSingleton* s) {
+void vtkMatlabEngineSingletonDestroyer::SetSingleton (vtkMatlabEngineSingleton* s) {
   _singleton = s;
 }
 
 
-MatlabEngineSingleton* MatlabEngineSingleton::Instance()
+vtkMatlabEngineSingleton* vtkMatlabEngineSingleton::Instance()
 {
 
   if(ins == 0)
     {
-    ins = new MatlabEngineSingleton;
+    ins = new vtkMatlabEngineSingleton;
     destroyer.SetSingleton(ins);
     }
 
@@ -172,13 +172,13 @@ MatlabEngineSingleton* MatlabEngineSingleton::Instance()
 }
 
 
-MatlabEngineSingleton::~MatlabEngineSingleton()
+vtkMatlabEngineSingleton::~vtkMatlabEngineSingleton()
 {
 
 
 }
 
-MatlabEngineSingleton::MatlabEngineSingleton()
+vtkMatlabEngineSingleton::vtkMatlabEngineSingleton()
 {
 
   this->refcount = 0;
@@ -190,7 +190,7 @@ MatlabEngineSingleton::MatlabEngineSingleton()
 vtkMatlabEngineInterface::vtkMatlabEngineInterface()
 {
 
-  this->meng = MatlabEngineSingleton::Instance();
+  this->meng = vtkMatlabEngineSingleton::Instance();
 
 }
 
@@ -230,28 +230,10 @@ int vtkMatlabEngineInterface::PutVtkDataArray(const char* name, vtkDataArray* vd
     return(1);
     }
 
-  mxArray* mxa = vtkMatlabMexAdapter::vtkDataArrayToMxArray(vda, true);
+  mxArray* mxa = vtkMatlabMexAdapter::vtkDataArrayToMxArray(vda);
 
   int rc = this->meng->EngPutVariable(name, mxa);
 
-  if(!rc)
-    {
-
-    vtkstd::string s;
-
-    s.append(name);
-    s.append(" = transpose(");
-    s.append(name);
-    s.append(");");
-
-    this->EvalString(s.c_str()); 
-
-    }
-
-  mwSize dims[1];
-  dims[0] = 0;
-  mxSetDimensions(mxa, dims, 1);
-  mxSetData(mxa, 0);
   mxDestroyArray(mxa);
 
   return(rc);
@@ -267,40 +249,10 @@ vtkDataArray* vtkMatlabEngineInterface::GetVtkDataArray(const char* name)
     return(0);
     }
 
-  vtkstd::string s;
-
-  s.append(name);
-  s.append(" = transpose(");
-  s.append(name);
-  s.append(");");
-
-  this->EvalString(s.c_str());
-
   mxArray* mxa = meng->EngGetVariable(name);
 
-  s.clear();
-  s.append(name);
-  s.append(" = transpose(");
-  s.append(name);
-  s.append(");");
+  vtkDataArray* vda = vtkMatlabMexAdapter::mxArrayTovtkDataArray(mxa);
 
-  this->EvalString(s.c_str()); 
-
-  if(!mxa)
-    {
-    return(0);
-    }
-
-  mwSize d[2];
-  d[0] = mxGetN(mxa);
-  d[1] = mxGetM(mxa);
-  mxSetDimensions(mxa,d,2);
-  vtkDataArray* vda = vtkMatlabMexAdapter::mxArrayTovtkDataArray(mxa, true);
-
-  mwSize dims[1];
-  dims[0] = 0;
-  mxSetDimensions(mxa, dims, 1);
-  mxSetData(mxa, 0); 
   mxDestroyArray(mxa);
 
   return(vda);

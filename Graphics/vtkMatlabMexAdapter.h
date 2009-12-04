@@ -65,6 +65,7 @@ public:
 
   static vtkMatlabMexAdapter *New();
 
+//BTX
   // Description:
   // Create a mxArray copy of a vtkDataArray (Allocates memory by default)
   static mxArray* vtkDataArrayToMxArray(vtkDataArray* aa, bool ShallowCopy = false);
@@ -75,23 +76,23 @@ public:
 
   // Description:
   // Create a mxArray copy of a vtkArray (Allocates memory by default)
-  static mxArray* vtkArrayToMxArray(vtkArray* va, bool ShallowCopy = false);
+  static mxArray* vtkArrayToMxArray(vtkArray* va);
 
   // Description:
   // Create a vtkArray copy of a mxArray (Allocates memory by default)
-  static vtkArray* mxArrayTovtkArray(mxArray* mxa, bool ShallowCopy = false);
+  static vtkArray* mxArrayTovtkArray(mxArray* mxa);
 
   // Description:
   // Create a mxArray copy of a vtkGraph (Allocates memory by default)
   // The result is an n by n connectivity matrix, where n is the number
   // of nodes in the graph.
-  static mxArray* vtkGraphToMxArray(vtkGraph* ga, bool ShallowCopy = false);
+  static mxArray* vtkGraphToMxArray(vtkGraph* ga);
 
   // Description:
   // Create a vtkGraph copy of a mxArray (Allocates memory by default)
   // Input mxArray should be a n by n connectivity matrix, where n is 
   // the number of nodes in the graph.
-  static vtkGraph* mxArrayTovtkGraph(mxArray* mxa, bool ShallowCopy = false);
+  static vtkGraph* mxArrayTovtkGraph(mxArray* mxa);
 
   // Description:
   // Match Matlab and VTK data types for conversion.
@@ -100,6 +101,7 @@ public:
   // Description:
   // Match Matlab and VTK data types for conversion.
   static vtkDataArray* GetVTKDataType(mxClassID cid);
+//ETX
 
 protected:
 

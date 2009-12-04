@@ -21,10 +21,17 @@
 
 #include <vtkRcalculatorFilter.h>
 #include <vtkSmartPointer.h>
+#include <vtkRRandomTableSource.h>
+#include <vtkDescriptiveStatistics.h>
+#include <vtkTable.h>
+#include <vtkVariant.h>
 
 #include <vtksys/ios/iostream>
 #include <vtksys/ios/sstream>
 #include <vtksys/stl/stdexcept>
+
+namespace
+{
 
 #define test_expression(expression) \
 { \
@@ -36,46 +43,89 @@
     } \
 }
 
+bool doubleEquals(double left, double right, double epsilon) {
+  return (fabs(left - right) < epsilon);
+}
+
+}
+
 int TestRRandomTableSource(int vtkNotUsed(argc), char *vtkNotUsed(argv)[])
 {
   try
     {
-    test_expression(1 == 1);
+    double mean_nd = 5.0;
+    double sd_nd = 2.5;
+    double lambda_pd = 3.0;
+    double k_csd = 3.0;
+    double lb_ud = 5.0;
+    double ub_ud = 100.0;
+    double nt_bd = 100;
+    double ps_bd = 0.2;
+    vtkRRandomTableSource* rts = vtkRRandomTableSource::New();
+    vtkDescriptiveStatistics* dsf = vtkDescriptiveStatistics::New();
+    rts->SetNumberOfRows(100000);
+    rts->SetStatisticalDistributionForColumn(vtkRRandomTableSource::NORMAL,mean_nd,sd_nd,0.0,"Normal",0);
+    rts->SetStatisticalDistributionForColumn(vtkRRandomTableSource::POISSON,lambda_pd,0.0,0.0,"Poisson",1);
+    rts->SetStatisticalDistributionForColumn(vtkRRandomTableSource::CHISQUARE,k_csd,0.0,0.0,"Chi-Square",2);
+    rts->SetStatisticalDistributionForColumn(vtkRRandomTableSource::UNIF,lb_ud,ub_ud,0.0,"Uniform",3);
+    rts->SetStatisticalDistributionForColumn(vtkRRandomTableSource::BINOMIAL,nt_bd,ps_bd,0.0,"Binomial",4);
+    dsf->SetInputConnection(rts->GetOutputPort());
+    dsf->AddColumn("Normal");
+    dsf->AddColumn("Poisson");
+    dsf->AddColumn("Chi-Square");
+    dsf->AddColumn("Uniform");
+    dsf->AddColumn("Binomial");
+    dsf->SetLearnOption( true );
+    dsf->SetDeriveOption( true );
+    dsf->Update();
+    vtkTable* outputMeta = dsf->GetOutput( vtkStatisticsAlgorithm::OUTPUT_MODEL );
 
-/*
-    vtkSmartPointer<vtkDenseArray<double> > a = vtkSmartPointer<vtkDenseArray<double> >::New();
-    vtkSmartPointer<vtkDenseArray<double> > b = vtkSmartPointer<vtkDenseArray<double> >::New();
+    for ( vtkIdType r = 0; r < outputMeta->GetNumberOfRows(); ++ r )
+      {
+      if(!strcmp(outputMeta->GetValueByName(r, "Variable").ToString(),"Normal"))
+        {
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"Mean").ToDouble(),mean_nd,1.0));
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"Standard Deviation").ToDouble(),sd_nd,1.0));
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"g1 Skewness").ToDouble(),0.0,1.0));
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"g2 Kurtosis").ToDouble(),0.0,1.0));
+        }
+      else if(!strcmp(outputMeta->GetValueByName(r, "Variable").ToString(),"Poisson"))
+        {
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"Mean").ToDouble(),lambda_pd,1.0));
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"Standard Deviation").ToDouble(),sqrt(lambda_pd),1.0));
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"g1 Skewness").ToDouble(),1.0/sqrt(lambda_pd),1.0));
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"g2 Kurtosis").ToDouble(),1.0/lambda_pd,1.0));
+        }
+      else if(!strcmp(outputMeta->GetValueByName(r, "Variable").ToString(),"Chi-Square"))
+        {
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"Mean").ToDouble(),k_csd,1.0));
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"Standard Deviation").ToDouble(),sqrt(2.0*k_csd),1.0));
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"g1 Skewness").ToDouble(),sqrt(8.0/k_csd),1.0));
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"g2 Kurtosis").ToDouble(),12.0/k_csd,2.0));
+        }
+      else if(!strcmp(outputMeta->GetValueByName(r, "Variable").ToString(),"Uniform"))
+        {
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"Mean").ToDouble(),0.5*(lb_ud+ub_ud),1.0));
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"Standard Deviation").ToDouble(),sqrt((1.0/12.0)*pow((ub_ud-lb_ud),2)),1.0));
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"g1 Skewness").ToDouble(),0.0,1.0));
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"g2 Kurtosis").ToDouble(),-(6.0/5.0),1.0));
+        }
+      else if(!strcmp(outputMeta->GetValueByName(r, "Variable").ToString(),"Binomial"))
+        {
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"Mean").ToDouble(),nt_bd*ps_bd,1.0));
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"Standard Deviation").ToDouble(),sqrt(nt_bd*ps_bd*(1.0 - ps_bd)),1.0));
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"g1 Skewness").ToDouble(),(1.0 - 2.0*ps_bd)/sqrt(nt_bd*ps_bd*(1.0 - ps_bd)),1.0));
+        test_expression(doubleEquals(outputMeta->GetValueByName(r,"g2 Kurtosis").ToDouble(),(1.0 - 6.0*ps_bd*(1.0 - ps_bd))/(nt_bd*ps_bd*(1.0 - ps_bd)),1.0));
+        }
+      }
 
-    a->Resize(5);
-    b->Resize(vtkArrayExtents(5));
-    test_expression(a->GetExtents() == b->GetExtents());
-   
-    a->SetValue(2, 3);
-    b->SetValue(vtkArrayCoordinates(2), 3);
-    test_expression(a->GetValue(2) == b->GetValue(vtkArrayCoordinates(2))); 
-    
-    a->Resize(5, 6);
-    b->Resize(vtkArrayExtents(5, 6));
-    test_expression(a->GetExtents() == b->GetExtents()); 
-    
-    a->SetValue(2, 3, 4);
-    b->SetValue(vtkArrayCoordinates(2, 3), 4);
-    test_expression(a->GetValue(2, 3) == b->GetValue(vtkArrayCoordinates(2, 3))); 
-    
-    a->Resize(5, 6, 7);
-    b->Resize(vtkArrayExtents(5, 6, 7));
-    test_expression(a->GetExtents() == b->GetExtents()); 
-    
-    a->SetValue(2, 3, 4, 5);
-    b->SetValue(vtkArrayCoordinates(2, 3, 4), 5);
-    test_expression(a->GetValue(2, 3, 4) == b->GetValue(vtkArrayCoordinates(2, 3, 4))); 
-*/
-    
+    dsf->Delete();
+    rts->Delete();
     return 0;
     }
   catch(vtkstd::exception& e)
     {
-    cerr << e.what() << endl;
+    vtkstd::cerr << e.what() << endl;
     return 1;
     }
 }

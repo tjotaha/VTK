@@ -179,8 +179,8 @@ public:
                     // param3 - not used
 
     CHISQUARE = 18, // Chi-square
-                    // param1 - number of observations 
-                    // param2 - degrees of freedom 
+                    // param1 - degrees of freedom
+                    // param2 - not used
                     // param3 - not used
 
   } StatDistType;

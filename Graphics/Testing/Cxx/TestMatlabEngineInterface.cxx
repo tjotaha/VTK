@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    $RCSfile: MatlabEngineInterface.cxx,v $
+  Module:    $RCSfile: TestMatlabEngineFilter.cxx,v $
   
 -------------------------------------------------------------------------
   Copyright 2008 Sandia Corporation.
@@ -22,11 +22,17 @@
 #include <vtkMatlabEngineInterface.h>
 #include <vtkSmartPointer.h>
 #include <vtkDoubleArray.h>
-#include "vtkArray.h"
+#include <vtkArray.h>
+#include <vtkDenseArray.h>
 
 #include <vtksys/ios/iostream>
 #include <vtksys/ios/sstream>
 #include <vtksys/stl/stdexcept>
+#include <stdio.h>
+#include <string.h>
+
+namespace
+{
 
 #define test_expression(expression) \
 { \
@@ -38,124 +44,77 @@
     } \
 }
 
+bool doubleEquals(double left, double right, double epsilon) {
+  return (fabs(left - right) < epsilon);
+}
+
+}
+
 int TestMatlabEngineInterface(int vtkNotUsed(argc), char *vtkNotUsed(argv)[])
 {
   try
     {
-    char buffer[2048];
-    int i;
-    int j;
-    int k;
+    int buf_size = 2000;
+    char* buffer = new char[buf_size];
+    buffer[0] = '\0';
+    vtkDoubleArray* da = vtkDoubleArray::New();
+    vtkDenseArray<double>* dda = vtkDenseArray<double>::New();
+    vtkMatlabEngineInterface* mei = vtkMatlabEngineInterface::New();
+    mei->SetVisibleOff();
+    mei->OutputBuffer(buffer, buf_size);
+    mei->EvalString("1:10\n");
+    test_expression(strlen(buffer) > 10);
 
-	vtkDoubleArray* arr = vtkDoubleArray::New();
-    vtkDoubleArray* marr; 
-    arr->SetName("NumList");
-    for(i=0;i<100;i++)
-      arr->InsertNextValue(i);
+    da->SetNumberOfComponents(3);
+    for( int cc = 0; cc < 10; cc ++ )
+      {
+      da->InsertNextTuple3( cc + 0.1, cc + 0.2, cc + 0.3);
+      }
 
-	vtkMatlabEngineInterface* ei = vtkMatlabEngineInterface::New();
+    mei->PutVtkDataArray("d",da);
+    mei->EvalString("d(:,1) = d(:,1) - 0.1;\n\
+                     d(:,2) = d(:,2) - 0.2;\n\
+                     d(:,3) = d(:,3) - 0.3;\n");
+    cout << buffer << endl;
+    vtkDoubleArray* rda = vtkDoubleArray::SafeDownCast(mei->GetVtkDataArray("d"));
+    test_expression(rda);
+    for(int i = 0;i<rda->GetNumberOfTuples();i++)
+      {
+      double* iv = da->GetTuple3(i);
+      double* rv = rda->GetTuple3(i);
+      test_expression(doubleEquals(iv[0] - 0.1,rv[0],0.001));
+      test_expression(doubleEquals(iv[1] - 0.2,rv[1],0.001));
+      test_expression(doubleEquals(iv[2] - 0.3,rv[2],0.001));
+      }
+    rda->Delete();
 
-	ei->SetVisibleOn();
-
-	ei->OutputBuffer(buffer,2048);
-
-	ei->PutVtkDataArray("NumList",arr);
-
-	ei->EvalString("NumList\n");
-
-	ei->EvalString("A = NumList.^2\n");
-
-	ei->EvalString("plot(0:99,A)\n");
-
-	cout << buffer << endl;
-
-	marr = vtkDoubleArray::SafeDownCast(ei->GetVtkDataArray("A"));
-
-	for(i=0;i<100;i++)
-		cout << marr->GetValue(i) << endl;
-
-	printf("Hit return to continue\n\n");
-	fgetc(stdin);
-
-	vtkArray* vr = vtkArray::CreateArray(vtkArray::DENSE, VTK_DOUBLE);
-	vtkArray* ra;
-
-	vr->Resize(10,10,10);
-
-	for(i=0;i<10;i++)
-	{
-		for(j=0;j<10;j++)
-		{
-			for(k=0;k<10;k++)
-			{
-				vr->SetVariantValue(i,j,k,i*j*k);
-			}
-		}
-	}
-
-	ei->PutVtkArray("diag",vr);
-
-	ei->EvalString("diag = sqrt(diag)\n");
-
-	ra = vtkArray::SafeDownCast(ei->GetVtkArray("diag"));
-
-	for(i=0;i<10;i++)
-	{
-		for(j=0;j<10;j++)
-		{
-			for(k=0;k<10;k++)
-			{
-			    cout << i << " " << j << " " << " " << k << " " << ra->GetVariantValue(i,j,k).ToDouble() << endl;
-			}
-		}
-	}
-
-	ra->Delete();
-	//vr->Delete();
-	ei->Delete();
-	arr->Delete();
-	//marr->Delete();
-
-
-    test_expression(1 == 1);
-
-
-
-
-/*
-    vtkSmartPointer<vtkDenseArray<double> > a = vtkSmartPointer<vtkDenseArray<double> >::New();
-    vtkSmartPointer<vtkDenseArray<double> > b = vtkSmartPointer<vtkDenseArray<double> >::New();
-
-    a->Resize(5);
-    b->Resize(vtkArrayExtents(5));
-    test_expression(a->GetExtents() == b->GetExtents());
-   
-    a->SetValue(2, 3);
-    b->SetValue(vtkArrayCoordinates(2), 3);
-    test_expression(a->GetValue(2) == b->GetValue(vtkArrayCoordinates(2))); 
-    
-    a->Resize(5, 6);
-    b->Resize(vtkArrayExtents(5, 6));
-    test_expression(a->GetExtents() == b->GetExtents()); 
-    
-    a->SetValue(2, 3, 4);
-    b->SetValue(vtkArrayCoordinates(2, 3), 4);
-    test_expression(a->GetValue(2, 3) == b->GetValue(vtkArrayCoordinates(2, 3))); 
-    
-    a->Resize(5, 6, 7);
-    b->Resize(vtkArrayExtents(5, 6, 7));
-    test_expression(a->GetExtents() == b->GetExtents()); 
-    
-    a->SetValue(2, 3, 4, 5);
-    b->SetValue(vtkArrayCoordinates(2, 3, 4), 5);
-    test_expression(a->GetValue(2, 3, 4) == b->GetValue(vtkArrayCoordinates(2, 3, 4))); 
-*/
-    
+    dda->Resize(vtkArrayExtents(3, 3, 5));
+    dda->Fill(64.0);
+    mei->PutVtkArray("a",dda);
+    mei->EvalString("a = sqrt(a);\n");
+    vtkDenseArray<double>* rdda = vtkDenseArray<double>::SafeDownCast(mei->GetVtkArray("a"));
+    const vtkArrayExtents extents = rdda->GetExtents();
+    for(int i = 0; i != extents[0]; ++i)
+      {
+      for(int j = 0; j != extents[1]; ++j)
+        {
+        for(int k = 0; k != extents[2]; ++k)
+          {
+          test_expression(doubleEquals(sqrt(dda->GetValue(vtkArrayCoordinates(i, j, k))),
+                                       rdda->GetValue(vtkArrayCoordinates(i, j, k)),
+                                       0.001));
+          }
+        }
+      }
+    rdda->Delete();
+    dda->Delete();
+    da->Delete();
+    mei->Delete();
     return 0;
     }
   catch(vtkstd::exception& e)
     {
-    cerr << e.what() << endl;
+    vtkstd::cerr << e.what() << endl;
     return 1;
     }
 }

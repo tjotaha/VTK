@@ -60,6 +60,7 @@ public:
 
   static vtkRAdapter *New();
 
+//BTX
   // Description:
   // Create a vtkDataArray copy of GNU R input matrix vaiable (deep copy, allocates memory)
   // Input is a R matrix or vector of doubles or integers
@@ -86,6 +87,7 @@ public:
   // Create a vtkTable copy of the GNU R input matrix variable (deep copy, allocates memory)
   // Input is R list of equal length vectors or a matrix.
   static vtkTable* RToVTKTable(SEXP variable);
+//ETX
 
 protected:
 
