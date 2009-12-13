@@ -1,4 +1,3 @@
-
 /*=========================================================================
 
   Program:   Visualization Toolkit
@@ -345,11 +344,6 @@ void vtkRInterface::AssignVTKTableToRVariable(vtkTable* table, const char* RVari
 
 int vtkRInterface::OutputBuffer(char* p, int n)
 {
-
-  if(this->buffer)
-    {
-    delete [] this->buffer;
-    }
 
   this->buffer = p;
   this->buffer_size = n;

@@ -34,5 +34,5 @@ if __name__ == "__main__":
   print "\n\nContents of result array copied to VTK from Matlab\n\n"
   for i in range(result.GetNumberOfTuples()):
     t = result.GetTuple1(i)
-    print'%6.4f' % t
+    print'result[%d] = %6.4f' % (i,t)
   
