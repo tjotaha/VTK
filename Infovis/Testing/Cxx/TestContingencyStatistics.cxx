@@ -100,7 +100,7 @@ int TestContingencyStatistics( int, char *[] )
 
   datasetTable->Delete();
 
-  // Select Column Pair of Interest ( Learn Mode )
+  // Select Column Pair of Interest ( Learn Option )
   // 1.1: a valid pair
   cs->AddColumnPair( "Port", "Protocol" );
   // 1.2: the same valid pair, just reversed -- should thus be ignored
@@ -110,15 +110,18 @@ int TestContingencyStatistics( int, char *[] )
   // 3: an invalid pair
   cs->AddColumnPair( "Source", "Dummy" );
 
-  // Test Learn, Derive, and Assess options
+  // Test Learn, Derive, Assess, and Test options
   cs->SetLearnOption( true );
   cs->SetDeriveOption( true );
   cs->SetAssessOption( true );
+  cs->SetTestOption( true );
   cs->Update();
 
-  vtkMultiBlockDataSet* outputMetaDS = vtkMultiBlockDataSet::SafeDownCast( cs->GetOutputDataObject( vtkStatisticsAlgorithm::OUTPUT_MODEL ) );
-  vtkTable* outputSummary = vtkTable::SafeDownCast( outputMetaDS->GetBlock( 0 ) );
-  vtkTable* outputContingency = vtkTable::SafeDownCast( outputMetaDS->GetBlock( 1 ) );
+  vtkMultiBlockDataSet* outputModelDS = vtkMultiBlockDataSet::SafeDownCast( cs->GetOutputDataObject( vtkStatisticsAlgorithm::OUTPUT_MODEL ) );
+  vtkTable* outputSummary = vtkTable::SafeDownCast( outputModelDS->GetBlock( 0 ) );
+  vtkTable* outputContingency = vtkTable::SafeDownCast( outputModelDS->GetBlock( 1 ) );
+
+  vtkTable* outputTest = vtkTable::SafeDownCast( cs->GetOutputDataObject( vtkStatisticsAlgorithm::OUTPUT_TEST ) );
 
   int testIntValue = 0;
   double testDoubleValue = 0;
@@ -227,9 +230,9 @@ int TestContingencyStatistics( int, char *[] )
   cout << "## Calculated the following marginal probabilities:\n";
   testIntValue = 0;
 
-  for ( unsigned int b = 2; b < outputMetaDS->GetNumberOfBlocks(); ++ b )
+  for ( unsigned int b = 2; b < outputModelDS->GetNumberOfBlocks(); ++ b )
     {
-    outputContingency = vtkTable::SafeDownCast( outputMetaDS->GetBlock( b ) );
+    outputContingency = vtkTable::SafeDownCast( outputModelDS->GetBlock( b ) );
 
     for ( vtkIdType r = 0; r < outputContingency->GetNumberOfRows(); ++ r )
       {
@@ -253,7 +256,7 @@ int TestContingencyStatistics( int, char *[] )
     testIntValue += 0;//outputContingency->GetValueByName( r, "Cardinality" ).ToInt();
     }
 
-  // Now inspect results of the Assess mode by looking for outliers
+  // Now inspect results of the Assess option by looking for outliers
   key = 0;
   vtkStdString varX = outputSummary->GetValue( key, 0 ).ToString();
   vtkStdString varY = outputSummary->GetValue( key, 1 ).ToString();
@@ -312,6 +315,44 @@ int TestContingencyStatistics( int, char *[] )
                              << testIntValue 
                              << " != " 
                              << nOutliers[i]
+                             << ".");
+      testStatus = 1;
+      }
+    cout << "\n";
+    }
+
+  // Last, check some results of the Test option
+  cout << "## Chi square statistics:\n";
+
+  // Corresponding known number of degrees of freedom
+  int nDOF[] = { 10, // (# ports - 1) x (# protocols - 1)
+                 10  // (# ports - 1) x (# sources - 1) 
+  };
+
+  // Loop over Test table
+  for ( vtkIdType r = 0; r < outputTest->GetNumberOfRows(); ++ r )
+    {
+    cout << "   ("
+         << outputSummary->GetValue( r, 0 ).ToString()
+         << ","
+         << outputSummary->GetValue( r, 1 ).ToString()
+         << ")";
+
+    for ( vtkIdType c = 0; c < outputTest->GetNumberOfColumns(); ++ c )
+      {
+      cout << ", "
+           << outputTest->GetColumnName( c )
+           << "="
+           << outputTest->GetValue( r, c ).ToDouble();
+      }
+    
+    // Verify some of the calculated statistics
+    if ( outputTest->GetValueByName( r, "d" ).ToInt() != nDOF[r] )
+      {
+      vtkGenericWarningMacro("Reported an incorrect number of degrees of freedom:"
+                             << outputTest->GetValueByName( r, "d" ).ToInt()
+                             << " != "
+                             << nDOF[r]
                              << ".");
       testStatus = 1;
       }
