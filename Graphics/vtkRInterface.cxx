@@ -1,4 +1,3 @@
-
 /*=========================================================================
 
   Program:   Visualization Toolkit
@@ -66,6 +65,11 @@ public:
 #ifndef WIN32
     R_SignalHandlers = 0;
 #endif
+	  
+#ifdef CSTACK_DEFNS
+	R_CStackLimit = (uintptr_t)-1; 
+#endif
+	  
 
     char *R_argv[]= {"vtkRInterface", "--gui=none", "--no-save", "--no-readline", "--silent"};
     Rf_initEmbeddedR(sizeof(R_argv)/sizeof(R_argv[0]), R_argv);
@@ -173,7 +177,7 @@ vtkRInterface::vtkRInterface()
 
   vtkstd::string  rcommand;
   this->rs = vtkImplementationRSingleton::Instance();
-  rcommand.append("f<-file(paste(tempdir(), \"/Routput.txt\", sep = \"\"), open=\"wt+\")");
+  rcommand.append("f<-file(paste(tempdir(), \"/Routput.txt\", sep = \"\"), open=\"wt+\")\n");
   tmpFilePath.clear();
   tmpFilePath.append(R_TempDir);
 #ifdef WIN32
@@ -182,7 +186,7 @@ vtkRInterface::vtkRInterface()
   tmpFilePath.append("/Routput.txt");
 #endif
   this->EvalRscript(rcommand.c_str(), false);
-  this->EvalRscript("sink(f)", false);
+  this->EvalRscript("sink(f)\n", false);
   this->buffer = 0;
   this->buffer_size = 0;
 
@@ -369,6 +373,12 @@ int vtkRInterface::FillOutputBuffer()
 
     fseek(fp,0,SEEK_END);
     len = ftell(fp);
+    
+    if(len == 0)
+      {
+      return(1);
+      }
+      
     if(len >= this->buffer_size)
       {
       fseek(fp,len-this->buffer_size+1,SEEK_SET);
@@ -384,8 +394,6 @@ int vtkRInterface::FillOutputBuffer()
     
     
     fclose(fp);
-
-    this->Modified();
 
     return(1);
 
